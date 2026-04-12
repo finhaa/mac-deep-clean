@@ -1,0 +1,52 @@
+{
+  "name": "mac-deep-clean",
+  "version": "0.1.0",
+  "description": "CLI that cleans what other Mac cleaners miss — wallpaper cache, Electron apps, Docker, screen recordings, and more",
+  "type": "module",
+  "bin": {
+    "mac-deep-clean": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check src/",
+    "format": "biome format --write src/",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "keywords": [
+    "macos",
+    "cleaner",
+    "disk-space",
+    "cli",
+    "system-data",
+    "wallpaper-cache",
+    "electron-cache"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "ora": "^8.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

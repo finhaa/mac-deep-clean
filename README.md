@@ -26,13 +26,45 @@ npm i -g mac-deep-clean
 ## Usage
 
 ```bash
-mac-deep-clean scan              # Scan and show reclaimable space
+mac-deep-clean scan               # Scan and show reclaimable space
+mac-deep-clean scan --deep        # Also report Electron app full state (risky)
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
 mac-deep-clean clean --risky      # Include risky categories (docker)
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 ```
+
+## Why my numbers look low (Full Disk Access)
+
+macOS's TCC (Transparency, Consent and Control) blocks unprivileged processes
+from reading parts of `~/Library` — even for files owned by your own user.
+When `du` can't traverse a dir, it silently reports the partial size, which
+means mac-deep-clean will understate the numbers compared to `sudo du`.
+
+If your scan shows a warning like `Some paths were unreadable (macOS TCC)`,
+grant Full Disk Access to the terminal running the command:
+
+1. Open **System Settings → Privacy & Security → Full Disk Access**
+2. Click **+** and add your terminal app (Terminal.app, iTerm2, Ghostty, etc.)
+   — or the Node binary if you run via a launcher
+3. Restart the terminal and re-run `mac-deep-clean scan`
+
+After granting access the wallpaper cache, Electron state, and Containers
+sizes should match `sudo du` reports.
+
+### --deep mode (Electron apps)
+
+By default, the Electron scanner only reports _regenerable cache subdirs_
+(`Cache`, `Code Cache`, `GPUCache`, `blob_storage`, `Service Worker`, `logs`).
+Non-cache data — IndexedDB, Local Storage, `workspaceStorage`, history,
+sessions — is excluded because deleting it **loses conversations, workspaces,
+and extension state**.
+
+Pass `--deep` to additionally report a per-app "full app data (state)" entry
+marked `risky`. On a real Mac that's typically 10+ GB of Claude conversations,
+Cursor workspace storage, VS Code extensions, etc. Review carefully; export
+anything you care about before cleaning.
 
 ## Scanners
 

@@ -24,9 +24,14 @@ export interface CleanResult {
   errors: string[];
 }
 
+export interface ScanOptions {
+  deep?: boolean;
+}
+
 export interface CleanOptions {
   dryRun?: boolean;
   risky?: boolean;
   yes?: boolean;
   category?: string;
+  deep?: boolean;
 }

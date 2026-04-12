@@ -15,6 +15,7 @@ program
   .command('scan')
   .description('Scan your Mac and report reclaimable space')
   .option('-c, --category <name>', 'Only scan a specific category')
+  .option('--deep', 'Include full Electron app state (conversations, workspaces) — risky')
   .action(async (opts) => {
     await scanCommand(opts);
   });
@@ -26,6 +27,7 @@ program
   .option('--risky', 'Include risky categories (docker, etc.)')
   .option('-y, --yes', 'Skip confirmation (non-interactive)')
   .option('-c, --category <name>', 'Only clean a specific category')
+  .option('--deep', 'Include full Electron app state — requires --risky to clean')
   .action(async (opts) => {
     await cleanCommand(opts);
   });

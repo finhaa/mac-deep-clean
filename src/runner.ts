@@ -1,13 +1,16 @@
 import ora from 'ora';
 import type { BaseScanner } from './scanners/index.js';
-import type { ScannerReport } from './types.js';
+import type { ScanOptions, ScannerReport } from './types.js';
 
-export async function runScanners(scanners: BaseScanner[]): Promise<ScannerReport[]> {
+export async function runScanners(
+  scanners: BaseScanner[],
+  options: ScanOptions = {},
+): Promise<ScannerReport[]> {
   const reports: ScannerReport[] = [];
   for (const scanner of scanners) {
     const spinner = ora(`Scanning ${scanner.name}…`).start();
     try {
-      const results = await scanner.scan();
+      const results = await scanner.scan(options);
       const totalSize = results.reduce((sum, r) => sum + r.size, 0);
       reports.push({
         name: scanner.name,

@@ -1,4 +1,4 @@
-import type { CleanResult, Risk, ScanResult } from '../types.js';
+import type { CleanResult, Risk, ScanOptions, ScanResult } from '../types.js';
 import { safeRemove } from '../utils/fs.js';
 
 export abstract class BaseScanner {
@@ -7,7 +7,7 @@ export abstract class BaseScanner {
   abstract readonly description: string;
   abstract readonly risk: Risk;
 
-  abstract scan(): Promise<ScanResult[]>;
+  abstract scan(options?: ScanOptions): Promise<ScanResult[]>;
 
   async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
     let freed = 0;

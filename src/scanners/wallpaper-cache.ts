@@ -8,8 +8,8 @@ const WALLPAPER_BUNDLE_IDS = ['com.apple.wallpaper.agent', 'com.apple.wallpaper'
 
 const WALLPAPER_PATHS: Array<{ path: string; label: string }> = [
   {
-    path: path.join(HOME, 'Library/Application Support/com.apple.wallpaper/Store'),
-    label: 'Application Support/com.apple.wallpaper/Store',
+    path: path.join(HOME, 'Library/Application Support/com.apple.wallpaper'),
+    label: 'Application Support/com.apple.wallpaper',
   },
   ...WALLPAPER_BUNDLE_IDS.map((id) => ({
     path: path.join(HOME, 'Library/Containers', id, 'Data/Library/Caches'),

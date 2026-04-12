@@ -1,0 +1,77 @@
+# mac-deep-clean
+
+> CLI that cleans what other Mac cleaners miss — wallpaper cache, Electron app caches, Docker, screen recordings, and more.
+
+Most Mac cleaners cover generic caches, logs, Homebrew, and Xcode. They ignore the biggest "System Data" offenders on modern macOS:
+
+- `com.apple.wallpaper` cache (can reach **40+ GB** on Macs with dynamic wallpapers)
+- Electron app caches (Claude, Cursor, VS Code, Slack, Discord, Figma, Linear, Obsidian…)
+- Granular `~/Library/Containers` and `~/Library/Group Containers` caches
+- Screen recording apps (Cap, Screen Studio, OBS)
+- Docker full prune (images, containers, volumes, build cache)
+- Android SDK, emulators, AVDs
+- Time Machine local snapshots
+- APFS snapshots
+- iOS Simulators (CoreSimulator) + Xcode DerivedData
+- Music creation caches (GarageBand, Logic Pro sound libraries)
+
+## Install
+
+```bash
+npx mac-deep-clean scan
+# or install globally
+npm i -g mac-deep-clean
+```
+
+## Usage
+
+```bash
+mac-deep-clean scan              # Scan and show reclaimable space
+mac-deep-clean clean              # Interactive cleanup
+mac-deep-clean clean --dry-run    # Preview only, no deletions
+mac-deep-clean clean --risky      # Include risky categories (docker)
+mac-deep-clean clean --category docker
+mac-deep-clean doctor             # Full diagnostic with recommendations
+```
+
+## Scanners
+
+| Scanner          | Category           | Risk     |
+| ---------------- | ------------------ | -------- |
+| Wallpaper Cache  | `wallpaper`        | safe     |
+| Electron Apps    | `electron`         | safe     |
+| Containers       | `containers`       | moderate |
+| Screen Recording | `screen-recording` | moderate |
+| Docker           | `docker`           | risky    |
+| Android SDK      | `android`          | moderate |
+| iOS Simulators   | `ios-simulators`   | safe     |
+| Time Machine     | `time-machine`     | moderate |
+| APFS Snapshots   | `apfs-snapshots`   | moderate |
+| Music Creation   | `music-creation`   | moderate |
+| Browser Caches   | `browser-cache`    | safe     |
+| Developer Caches | `dev-cache`        | safe     |
+| Homebrew         | `homebrew`         | safe     |
+| Logs             | `logs`             | safe     |
+| User Caches      | `user-cache`       | safe     |
+| System Caches    | `system-cache`     | moderate |
+
+## Safety
+
+- Protected paths (`/System`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, …) are never touched.
+- `--dry-run` is 100% side-effect-free.
+- Docker uses `docker system prune`, not manual `rm`.
+- iOS simulators use `xcrun simctl delete`, not manual `rm`.
+- Size calculations timeout after 30s to avoid hangs on SIP-protected dirs.
+- Time Machine and APFS snapshot deletion requires `sudo` and is clearly warned.
+
+## Credits
+
+Inspired by and borrowing architectural patterns from:
+
+- [clmm-clean-my-mac-cli](https://github.com/0xAstroAlpha/clmm-clean-my-mac-cli) by [@0xAstroAlpha](https://github.com/0xAstroAlpha)
+- [mac-cleaner-cli](https://github.com/guhcostan/mac-cleaner-cli) by [@guhcostan](https://github.com/guhcostan)
+- [Mole](https://github.com/tw93/Mole) by [@tw93](https://github.com/tw93)
+
+## License
+
+MIT

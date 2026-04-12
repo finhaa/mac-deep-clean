@@ -2,8 +2,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assertSafeToDelete } from './paths.js';
 import { run } from './exec.js';
+import { addWarning } from './warnings.js';
 
 const SIZE_TIMEOUT_MS = 30_000;
+
+const FDA_WARNING =
+  'Some paths were unreadable (macOS TCC). Sizes may be understated.\n' +
+  '  Grant Full Disk Access to your terminal:\n' +
+  '  System Settings → Privacy & Security → Full Disk Access → add Terminal / iTerm / your shell host.';
+
+function isPermissionError(stderr: string): boolean {
+  return /Operation not permitted|Permission denied/i.test(stderr);
+}
 
 export async function pathExists(p: string): Promise<boolean> {
   try {
@@ -37,10 +47,11 @@ export async function getSize(p: string): Promise<number> {
     return 0;
   }
   const escaped = p.replace(/(["\\$`])/g, '\\$1');
-  const { stdout, code } = await run(`du -sk "${escaped}" 2>/dev/null`, {
+  const { stdout, stderr, code } = await run(`du -sk "${escaped}"`, {
     timeout: SIZE_TIMEOUT_MS,
   });
-  if (code !== 0) return 0;
+  if (stderr && isPermissionError(stderr)) addWarning(FDA_WARNING);
+  if (code !== 0 && !stdout.trim()) return 0;
   const match = stdout.trim().split(/\s+/)[0];
   const kb = match ? Number.parseInt(match, 10) : 0;
   return Number.isFinite(kb) ? kb * 1024 : 0;

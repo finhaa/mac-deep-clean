@@ -5,10 +5,17 @@ import { getAllScanners } from '../scanners/index.js';
 import { runScanners } from '../runner.js';
 import type { CleanOptions, ScannerReport, ScanResult } from '../types.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
+import { flushWarnings } from '../utils/warnings.js';
 
 export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   console.log(chalk.bold.cyan('\n🧹 mac-deep-clean\n'));
   if (options.dryRun) console.log(chalk.yellow('DRY RUN — no files will be deleted.\n'));
+  if (options.deep)
+    console.log(
+      chalk.yellow(
+        'DEEP mode: Electron app full-state entries will appear — review carefully before selecting.\n',
+      ),
+    );
 
   let scanners = getAllScanners();
   if (options.category) {
@@ -23,7 +30,12 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     scanners = scanners.filter((s) => s.risk !== 'risky');
   }
 
-  const reports = await runScanners(scanners);
+  const reports = await runScanners(scanners, { deep: options.deep });
+  const warnings = flushWarnings();
+  if (warnings.length > 0) {
+    console.log(chalk.yellow('\nWarnings:'));
+    for (const w of warnings) console.log(`  ${chalk.yellow('⚠')} ${w}`);
+  }
   const nonEmpty = reports.filter((r) => r.results.length > 0 && r.totalSize > 0);
   if (nonEmpty.length === 0) {
     console.log(chalk.green('\n✓ Nothing to clean.\n'));

@@ -2,10 +2,20 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { getAllScanners } from '../scanners/index.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
+import { flushWarnings } from '../utils/warnings.js';
 import { runScanners } from '../runner.js';
 
-export async function scanCommand(options: { category?: string } = {}): Promise<void> {
+export async function scanCommand(
+  options: { category?: string; deep?: boolean } = {},
+): Promise<void> {
   console.log(chalk.bold.cyan('\n🔍 Scanning your Mac...\n'));
+  if (options.deep) {
+    console.log(
+      chalk.yellow(
+        'DEEP mode: Electron apps will also report full state (risky — reviewer recommended).\n',
+      ),
+    );
+  }
 
   let scanners = getAllScanners();
   if (options.category) {
@@ -17,7 +27,7 @@ export async function scanCommand(options: { category?: string } = {}): Promise<
     }
   }
 
-  const reports = await runScanners(scanners);
+  const reports = await runScanners(scanners, { deep: options.deep });
 
   const sorted = [...reports].sort((a, b) => b.totalSize - a.totalSize);
 
@@ -57,6 +67,12 @@ export async function scanCommand(options: { category?: string } = {}): Promise<
   if (errored.length > 0) {
     console.log(chalk.yellow('\nErrors:'));
     for (const r of errored) console.log(`  ${chalk.yellow('⚠')} ${r.name}: ${r.error}`);
+  }
+
+  const warnings = flushWarnings();
+  if (warnings.length > 0) {
+    console.log(chalk.yellow('\nWarnings:'));
+    for (const w of warnings) console.log(`  ${chalk.yellow('⚠')} ${w}`);
   }
 
   console.log(

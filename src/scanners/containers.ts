@@ -3,6 +3,9 @@ import type { ScanResult } from '../types.js';
 import { getSize, isDirectory, listDir } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
+import { WallpaperCacheScanner } from './wallpaper-cache.js';
+
+const SKIPPED_BUNDLE_IDS = new Set<string>(WallpaperCacheScanner.skippedContainerBundleIds);
 
 export class ContainersScanner extends BaseScanner {
   readonly name = 'Containers';
@@ -17,6 +20,7 @@ export class ContainersScanner extends BaseScanner {
 
     for (const bundleId of await listDir(containersRoot)) {
       if (bundleId.startsWith('.')) continue;
+      if (SKIPPED_BUNDLE_IDS.has(bundleId)) continue;
       const cacheDir = path.join(containersRoot, bundleId, 'Data/Library/Caches');
       if (!(await isDirectory(cacheDir))) continue;
       const size = await getSize(cacheDir);

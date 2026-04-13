@@ -1,5 +1,5 @@
 import type { CleanResult, ScanResult } from '../types.js';
-import { commandExists, run } from '../utils/exec.js';
+import { asInvokingUser, run } from '../utils/exec.js';
 import { BaseScanner } from './base-scanner.js';
 
 export class HomebrewScanner extends BaseScanner {
@@ -9,8 +9,9 @@ export class HomebrewScanner extends BaseScanner {
   readonly risk = 'safe' as const;
 
   async scan(): Promise<ScanResult[]> {
-    if (!(await commandExists('brew'))) return [];
-    const { stdout, code } = await run('brew --cache', { timeout: 5000 });
+    const probe = await run(asInvokingUser('command -v brew'), { timeout: 3000 });
+    if (probe.code !== 0) return [];
+    const { stdout, code } = await run(asInvokingUser('brew --cache'), { timeout: 5000 });
     if (code !== 0) return [];
     const cachePath = stdout.trim();
     if (!cachePath) return [];
@@ -38,7 +39,9 @@ export class HomebrewScanner extends BaseScanner {
         freed += r.size;
         continue;
       }
-      const { code, stderr } = await run('brew cleanup -s --prune=all', { timeout: 120_000 });
+      const { code, stderr } = await run(asInvokingUser('brew cleanup -s --prune=all'), {
+        timeout: 120_000,
+      });
       if (code !== 0) errors.push(`brew cleanup: ${stderr}`);
       else freed += r.size;
     }

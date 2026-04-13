@@ -35,6 +35,31 @@ mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 ```
 
+## Running with sudo
+
+A few categories need root permissions — either to measure accurately
+(`/Library/Caches/*`, which is root-owned) or to actually delete
+(`tmutil` snapshots, `diskutil apfs` snapshots, `/Library/*`).
+
+Preferred flow:
+
+```bash
+npm run build
+sudo node dist/index.js scan
+sudo node dist/index.js clean --category time-machine
+sudo node dist/index.js clean --category apfs-snapshots
+```
+
+**Avoid** `sudo npm run dev` — that runs npm itself as root and will
+leave root-owned files in your `node_modules` and `.npm` cache.
+`sudo node dist/index.js` invokes the built binary directly, bypassing
+npm and tsx entirely, which is what you want.
+
+When running as root, mac-deep-clean automatically detects it and
+changes the permission-warning output accordingly: any `/Library`
+path that still fails is treated as likely SIP-protected instead of
+telling you to "re-run with sudo" (you already are).
+
 ## Why my numbers look low (Full Disk Access)
 
 macOS's TCC (Transparency, Consent and Control) blocks unprivileged processes

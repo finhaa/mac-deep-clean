@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { getAllScanners } from '../scanners/index.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
+import { partitionCleanable } from '../utils/partition.js';
 import { flushWarnings } from '../utils/warnings.js';
 import { runScanners } from '../runner.js';
 
@@ -27,7 +28,8 @@ export async function scanCommand(
     }
   }
 
-  const reports = await runScanners(scanners, { deep: options.deep });
+  const rawReports = await runScanners(scanners, { deep: options.deep });
+  const { reports, infoItems } = partitionCleanable(rawReports);
 
   const sorted = [...reports].sort((a, b) => b.totalSize - a.totalSize);
 
@@ -60,6 +62,19 @@ export async function scanCommand(
     }
     if (r.results.length > 8) {
       console.log(`  ${chalk.grey('└─')} ${chalk.grey(`… and ${r.results.length - 8} more`)}`);
+    }
+  }
+
+  if (infoItems.length > 0) {
+    const infoTotal = infoItems.reduce((s, i) => s + i.size, 0);
+    console.log(
+      `\n${chalk.grey(`ℹ Not cleanable by this tool — ${formatBytes(infoTotal)}`)}`,
+    );
+    for (const item of infoItems) {
+      console.log(
+        `  ${chalk.grey('•')} ${truncate(item.label, 50).padEnd(52)} ${colorSize(item.size)}`,
+      );
+      if (item.description) console.log(`    ${chalk.grey(item.description)}`);
     }
   }
 

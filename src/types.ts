@@ -7,6 +7,13 @@ export interface ScanResult {
   category: string;
   risk: Risk;
   description?: string;
+  /**
+   * False when this item is reported for visibility but cannot be cleaned
+   * by mac-deep-clean (e.g. Docker Desktop VM disk, which only shrinks
+   * via Docker Desktop → Troubleshoot → Clean/Purge data).
+   * Defaults to true.
+   */
+  cleanable?: boolean;
 }
 
 export interface ScannerReport {

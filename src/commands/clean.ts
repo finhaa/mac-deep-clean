@@ -5,6 +5,7 @@ import { getAllScanners } from '../scanners/index.js';
 import { runScanners } from '../runner.js';
 import type { CleanOptions, ScannerReport, ScanResult } from '../types.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
+import { partitionCleanable } from '../utils/partition.js';
 import { flushWarnings } from '../utils/warnings.js';
 
 export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
@@ -30,11 +31,24 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     scanners = scanners.filter((s) => s.risk !== 'risky');
   }
 
-  const reports = await runScanners(scanners, { deep: options.deep });
+  const rawReports = await runScanners(scanners, { deep: options.deep });
+  const { reports, infoItems } = partitionCleanable(rawReports);
   const warnings = flushWarnings();
   if (warnings.length > 0) {
     console.log(chalk.yellow('\nWarnings:'));
     for (const w of warnings) console.log(`  ${chalk.yellow('⚠')} ${w}`);
+  }
+  if (infoItems.length > 0) {
+    const infoTotal = infoItems.reduce((s, i) => s + i.size, 0);
+    console.log(
+      `\n${chalk.grey(`ℹ Not cleanable by this tool — ${formatBytes(infoTotal)}:`)}`,
+    );
+    for (const item of infoItems) {
+      console.log(
+        `  ${chalk.grey('•')} ${truncate(item.label, 50).padEnd(52)} ${colorSize(item.size)}`,
+      );
+      if (item.description) console.log(`    ${chalk.grey(item.description)}`);
+    }
   }
   const nonEmpty = reports.filter((r) => r.results.length > 0 && r.totalSize > 0);
   if (nonEmpty.length === 0) {

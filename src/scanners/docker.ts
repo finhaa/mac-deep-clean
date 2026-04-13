@@ -41,10 +41,12 @@ export class DockerScanner extends BaseScanner {
         results.push({
           path: vmPath,
           size,
-          label: 'Docker VM disk',
+          label: 'Docker VM disk (info only)',
           category: this.category,
           risk: this.risk,
-          description: 'Docker Desktop VM disk image (reset via Docker Desktop)',
+          description:
+            'Docker.raw only shrinks via Docker Desktop → Settings → Troubleshoot → Clean/Purge data. mac-deep-clean cannot reclaim this directly.',
+          cleanable: false,
         });
       }
     }

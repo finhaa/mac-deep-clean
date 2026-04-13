@@ -45,11 +45,15 @@ export async function getSize(p: string): Promise<number> {
   const { stdout, stderr, code } = await run(`du -sk "${escaped}"`, {
     timeout: SIZE_TIMEOUT_MS,
   });
-  if (stderr && isPermissionError(stderr)) addPermissionWarning(p);
-  if (code !== 0 && !stdout.trim()) return 0;
+  if (code !== 0 && !stdout.trim()) {
+    if (stderr && isPermissionError(stderr)) addPermissionWarning(p, 0);
+    return 0;
+  }
   const match = stdout.trim().split(/\s+/)[0];
   const kb = match ? Number.parseInt(match, 10) : 0;
-  return Number.isFinite(kb) ? kb * 1024 : 0;
+  const bytes = Number.isFinite(kb) ? kb * 1024 : 0;
+  if (stderr && isPermissionError(stderr)) addPermissionWarning(p, bytes);
+  return bytes;
 }
 
 export async function listDir(p: string): Promise<string[]> {

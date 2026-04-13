@@ -11,6 +11,7 @@ import { HomebrewScanner } from './homebrew.js';
 import { IosBackupsScanner } from './ios-backups.js';
 import { IosSimulatorsScanner } from './ios-simulators.js';
 import { JetBrainsScanner } from './jetbrains.js';
+import { LaunchAgentsScanner } from './launch-agents.js';
 import { LogsScanner } from './logs.js';
 import { MailDownloadsScanner } from './mail-downloads.js';
 import { MusicCreationScanner } from './music-creation.js';
@@ -47,6 +48,7 @@ export function getAllScanners(): BaseScanner[] {
     new SavedAppStateScanner(),
     new TempFilesScanner(),
     new TrashScanner(),
+    new LaunchAgentsScanner(),
     new LogsScanner(),
     new UserCacheScanner(),
     new SystemCacheScanner(),

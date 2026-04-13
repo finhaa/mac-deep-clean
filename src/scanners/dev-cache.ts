@@ -28,6 +28,12 @@ export class DevCacheScanner extends BaseScanner {
       { rel: 'Library/Caches/uv', label: 'uv cache' },
       { rel: '.bun/install/cache', label: 'Bun cache' },
       { rel: 'Library/Caches/deno', label: 'Deno cache' },
+      { rel: 'Library/Caches/CocoaPods', label: 'CocoaPods cache' },
+      { rel: '.cocoapods/repos', label: 'CocoaPods repos', risk: 'moderate' },
+      { rel: 'Library/Caches/pre-commit', label: 'pre-commit cache' },
+      { rel: 'Library/Caches/Composer', label: 'Composer cache' },
+      { rel: 'Library/Caches/Bazel', label: 'Bazel cache' },
+      { rel: '.terraform.d/plugin-cache', label: 'Terraform plugin cache' },
     ];
 
     const results: ScanResult[] = [];

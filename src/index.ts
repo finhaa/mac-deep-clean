@@ -2,6 +2,8 @@
 import { Command } from 'commander';
 import { cleanCommand } from './commands/clean.js';
 import { doctorCommand } from './commands/doctor.js';
+import { duplicatesCommand } from './commands/duplicates.js';
+import { purgeCommand } from './commands/purge.js';
 import { scanCommand } from './commands/scan.js';
 
 const program = new Command();
@@ -37,6 +39,25 @@ program
   .description('Full system disk diagnostic with recommendations')
   .action(async () => {
     await doctorCommand();
+  });
+
+program
+  .command('purge')
+  .description('Find and delete project build artifacts (node_modules, .venv, target, Pods…)')
+  .option('--dry-run', 'Preview only — no files deleted')
+  .option('-y, --yes', 'Skip confirmation')
+  .option('-p, --path <dir...>', 'Override search roots (default: ~/code, ~/Projects, ~/dev, …)')
+  .action(async (opts) => {
+    await purgeCommand(opts);
+  });
+
+program
+  .command('duplicates <path>')
+  .description('Find duplicate files (read-only report, no deletion)')
+  .option('--min-size <size>', 'Minimum file size (e.g. 1MB, 500K)', '1MB')
+  .option('--top <n>', 'Show top N duplicate groups', '20')
+  .action(async (path, opts) => {
+    await duplicatesCommand(path, opts);
   });
 
 program.parseAsync(process.argv).catch((err) => {

@@ -33,6 +33,10 @@ mac-deep-clean clean --dry-run    # Preview only, no deletions
 mac-deep-clean clean --risky      # Include risky categories (docker)
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
+mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
+mac-deep-clean purge --dry-run    # Preview project artifact deletion
+mac-deep-clean duplicates ~/Downloads --min-size 5MB
+                                  # Read-only duplicate file report
 ```
 
 ## Running with sudo
@@ -93,24 +97,43 @@ anything you care about before cleaning.
 
 ## Scanners
 
-| Scanner          | Category           | Risk     |
-| ---------------- | ------------------ | -------- |
-| Wallpaper Cache  | `wallpaper`        | safe     |
-| Electron Apps    | `electron`         | safe     |
-| Containers       | `containers`       | moderate |
-| Screen Recording | `screen-recording` | moderate |
-| Docker           | `docker`           | risky    |
-| Android SDK      | `android`          | moderate |
-| iOS Simulators   | `ios-simulators`   | safe     |
-| Time Machine     | `time-machine`     | moderate |
-| APFS Snapshots   | `apfs-snapshots`   | moderate |
-| Music Creation   | `music-creation`   | moderate |
-| Browser Caches   | `browser-cache`    | safe     |
-| Developer Caches | `dev-cache`        | safe     |
-| Homebrew         | `homebrew`         | safe     |
-| Logs             | `logs`             | safe     |
-| User Caches      | `user-cache`       | safe     |
-| System Caches    | `system-cache`     | moderate |
+| Scanner               | Category             | Risk     |
+| --------------------- | -------------------- | -------- |
+| Wallpaper Cache       | `wallpaper`          | safe     |
+| Electron Apps         | `electron`           | safe     |
+| Containers            | `containers`         | moderate |
+| Screen Recording      | `screen-recording`   | moderate |
+| Docker                | `docker`             | risky    |
+| Android SDK           | `android`            | moderate |
+| iOS Simulators        | `ios-simulators`     | safe     |
+| iOS Device Backups    | `ios-backups`        | moderate |
+| Time Machine          | `time-machine`       | moderate |
+| APFS Snapshots        | `apfs-snapshots`     | moderate |
+| Music Creation        | `music-creation`     | moderate |
+| Browser Caches        | `browser-cache`      | safe     |
+| Developer Caches      | `dev-cache`          | safe     |
+| Homebrew              | `homebrew`           | safe     |
+| JetBrains IDEs        | `jetbrains`          | safe     |
+| Spotify               | `spotify`            | safe     |
+| Mail Downloads        | `mail-downloads`     | safe     |
+| Diagnostic Reports    | `diagnostic-reports` | safe     |
+| Saved App State       | `saved-app-state`    | safe     |
+| Temp Files            | `temp-files`         | moderate |
+| Trash                 | `trash`              | safe     |
+| Orphaned LaunchAgents | `launch-agents`      | moderate |
+| Logs                  | `logs`               | safe     |
+| User Caches           | `user-cache`         | safe     |
+| System Caches         | `system-cache`       | moderate |
+
+Plus two extra commands:
+
+- **`purge`** — walks `~/code`, `~/Projects`, `~/dev`, etc. and finds
+  `node_modules`, `.venv`, `target`, `Pods`, `.next`, `.terraform`,
+  and friends. Dedupes by realpath so case-insensitive APFS doesn't
+  double-count.
+- **`duplicates <path>`** — read-only sha256 duplicate file detector,
+  scoped to a path you specify. Two-stage (size collision → hash) to
+  keep it fast.
 
 ## Safety
 

@@ -9,11 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial 16-scanner suite covering wallpaper cache, Electron app caches,
+- Initial 25-scanner suite covering wallpaper cache, Electron app caches,
   containers, screen recording apps, Docker, Android SDK/AVDs,
-  iOS simulators + Xcode DerivedData, Time Machine snapshots, APFS snapshots,
-  music creation libraries, browsers, dev caches, Homebrew, logs, user caches,
-  and system caches.
+  iOS simulators + Xcode DerivedData, iOS device backups, Time Machine
+  snapshots, APFS snapshots, music creation libraries, browsers, dev
+  caches, Homebrew, JetBrains IDEs, Spotify, Mail Downloads, Diagnostic
+  Reports, Saved Application State, temp files, Trash, orphaned
+  LaunchAgents, logs, user caches, and system caches.
+- `purge` command that walks developer project roots
+  (`~/code`, `~/Projects`, `~/dev`, …) and removes build artifact dirs
+  (`node_modules`, `.venv`, `target`, `Pods`, `.next`, `.terraform`,
+  `.gradle`, `__pycache__`, …). Dedupes by realpath.
+- `duplicates <path>` command — read-only sha256 duplicate file detector
+  with two-stage (size → hash) matching, `--min-size` and `--top` flags.
 - `scan`, `clean`, and `doctor` commands with interactive checkbox selection
   via `@inquirer/prompts`.
 - Flags: `--dry-run`, `--risky`, `--yes`, `--category <name>`, `--deep`.

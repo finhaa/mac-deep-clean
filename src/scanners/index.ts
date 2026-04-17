@@ -15,6 +15,7 @@ import { LaunchAgentsScanner } from './launch-agents.js';
 import { LogsScanner } from './logs.js';
 import { MailDownloadsScanner } from './mail-downloads.js';
 import { MusicCreationScanner } from './music-creation.js';
+import { ProjectArtifactsScanner } from './project-artifacts.js';
 import { SavedAppStateScanner } from './saved-app-state.js';
 import { ScreenRecordingScanner } from './screen-recording.js';
 import { SpotifyScanner } from './spotify.js';
@@ -52,6 +53,7 @@ export function getAllScanners(): BaseScanner[] {
     new LogsScanner(),
     new UserCacheScanner(),
     new SystemCacheScanner(),
+    new ProjectArtifactsScanner(),
   ];
 }
 

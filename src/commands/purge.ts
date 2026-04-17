@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { confirm } from '@inquirer/prompts';
+import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import ora from 'ora';
 import { ProjectArtifactsScanner } from '../scanners/project-artifacts.js';
@@ -45,16 +45,46 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
   const total = results.reduce((s, r) => s + r.size, 0);
   console.log(`\n${chalk.bold('Total reclaimable:')} ${colorSize(total)}\n`);
 
-  for (const r of results.slice(0, 30)) {
-    console.log(`  ${chalk.grey('•')} ${truncate(r.label, 60).padEnd(62)} ${colorSize(r.size)}`);
+  let selected: ScanResult[];
+
+  if (options.yes) {
+    for (const r of results.slice(0, 30)) {
+      console.log(`  ${chalk.grey('•')} ${truncate(r.label, 60).padEnd(62)} ${colorSize(r.size)}`);
+    }
+    if (results.length > 30) {
+      console.log(chalk.grey(`  … and ${results.length - 30} more`));
+    }
+    selected = results;
+  } else {
+    const choices = results.map((r, idx) => ({
+      name: `${truncate(r.label, 60).padEnd(62)} ${colorSize(r.size)}`,
+      value: idx,
+      checked: true,
+    }));
+
+    const selectedIdx = await checkbox<number>({
+      message: `Select dirs to delete (${formatBytes(total)} total):`,
+      choices,
+      pageSize: 20,
+      loop: false,
+    });
+
+    selected = selectedIdx.map((i) => results[i]).filter(Boolean) as ScanResult[];
   }
-  if (results.length > 30) {
-    console.log(chalk.grey(`  … and ${results.length - 30} more`));
+
+  if (selected.length === 0) {
+    console.log(chalk.grey('\nNothing selected. Exiting.\n'));
+    return;
   }
+
+  const selectedTotal = selected.reduce((s, r) => s + r.size, 0);
+  console.log(
+    `\n${chalk.bold('Selected:')} ${selected.length} dir(s) — ${colorSize(selectedTotal)} to free`,
+  );
 
   if (!options.yes && !options.dryRun) {
     const ok = await confirm({
-      message: `Delete all ${results.length} dirs (${formatBytes(total)})?`,
+      message: `Proceed with deletion? (${formatBytes(selectedTotal)})`,
       default: false,
     });
     if (!ok) {
@@ -63,7 +93,7 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
     }
   }
 
-  await deleteAll(results, options.dryRun ?? false);
+  await deleteAll(selected, options.dryRun ?? false);
 }
 
 async function deleteAll(results: ScanResult[], dryRun: boolean): Promise<void> {

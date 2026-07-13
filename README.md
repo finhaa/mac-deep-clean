@@ -17,11 +17,17 @@ Most Mac cleaners cover generic caches, logs, Homebrew, and Xcode. They ignore t
 
 ## Install
 
+Not published to npm yet — install from source. Requires Node.js **>= 20.12.0**.
+
 ```bash
-npx mac-deep-clean scan
-# or install globally
-npm i -g mac-deep-clean
+git clone https://github.com/finhaa/mac-deep-clean.git
+cd mac-deep-clean
+npm install
+npm run build
+npm link            # exposes the `mac-deep-clean` binary on your PATH
 ```
+
+Or skip `npm link` and run the built binary directly with `node dist/index.js <command>`.
 
 ## Usage
 
@@ -30,11 +36,15 @@ mac-deep-clean scan               # Scan and show reclaimable space
 mac-deep-clean scan --deep        # Also report Electron app full state (risky)
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
-mac-deep-clean clean --risky      # Include risky categories (docker)
+mac-deep-clean clean --risky      # Include risky categories (docker, Electron state)
+mac-deep-clean clean --yes        # Non-interactive; skip prompts (excludes risky unless --risky)
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
 mac-deep-clean purge --dry-run    # Preview project artifact deletion
+mac-deep-clean purge --yes        # Skip confirmation
+mac-deep-clean purge --path ~/work ~/oss
+                                  # Override the default dev search roots
 mac-deep-clean duplicates ~/Downloads --min-size 5MB
                                   # Read-only duplicate file report
 ```
@@ -124,6 +134,10 @@ anything you care about before cleaning.
 | Logs                  | `logs`               | safe     |
 | User Caches           | `user-cache`         | safe     |
 | System Caches         | `system-cache`       | moderate |
+| Project Build Artifacts | `project-artifacts` | moderate |
+
+The `project-artifacts` scanner backs the dedicated `purge` command, but is
+also a normal category — `scan`/`clean --category project-artifacts` work too.
 
 Plus two extra commands:
 
@@ -137,7 +151,8 @@ Plus two extra commands:
 
 ## Safety
 
-- Protected paths (`/System`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, …) are never touched.
+- Protected paths (`/System`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, …) are never touched, nor is any directory that _contains_ one of them.
+- Risky items (Docker, Electron app state via `--deep`) are excluded from cleanup unless you pass `--risky` or explicitly name their `--category` — including in `--yes` mode.
 - `--dry-run` is 100% side-effect-free.
 - Docker uses `docker system prune`, not manual `rm`.
 - iOS simulators use `xcrun simctl delete`, not manual `rm`.

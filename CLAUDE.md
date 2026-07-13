@@ -8,7 +8,7 @@ mac-deep-clean — macOS CLI that cleans what other cleaners miss.
 
 This project is inspired by [clmm-clean-my-mac-cli](https://github.com/0xAstroAlpha/clmm-clean-my-mac-cli) and [mac-cleaner-cli](https://github.com/guhcostan/mac-cleaner-cli). Both are TypeScript CLIs using Commander.js + Inquirer. We borrow architectural patterns (BaseScanner, category-based cleanup, interactive selection) but add scanners for categories they completely miss.
 
-Read `mac-deep-clean-spec.md` for the full specification including all scanner paths, architecture, commands, safety rules, and implementation order.
+The scanner list, commands, and safety rules live in the code (`src/scanners/`, `src/commands/`, `src/utils/paths.ts`) and are summarized in `README.md`. The code is the source of truth.
 
 ## Key Decisions
 

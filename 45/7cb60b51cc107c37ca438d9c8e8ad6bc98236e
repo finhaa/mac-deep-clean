@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_ab39754d5d4a1e::t_813748ce845b27 12,18-19,44-53,56-57
+CLAUDE.md
+  s_ab39754d5d4a1e::t_3d294838698139 11
+README.md
+  s_ab39754d5d4a1e::t_9ac2e521320430 20-21,23-27,30-31,39-40,45-47,137-140,154-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "457cb60b51cc107c37ca438d9c8e8ad6bc98236e",
+  "prompts": {},
+  "sessions": {
+    "s_ab39754d5d4a1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b847684f-010c-4e19-91e1-ff6ee1c079e9",
+        "model": "unknown"
+      },
+      "human_author": "Rafael Farias Lima <finha.farias@outlook.com>"
+    }
+  }
+}

@@ -71,10 +71,9 @@ export class IosSimulatorsScanner extends BaseScanner {
     for (const r of results) {
       if (r.path === 'xcrun:simctl:unavailable') {
         if (!dryRun) {
-          const { code, stderr } = await run(
-            asInvokingUser('xcrun simctl delete unavailable'),
-            { timeout: 60_000 },
-          );
+          const { code, stderr } = await run(asInvokingUser('xcrun simctl delete unavailable'), {
+            timeout: 60_000,
+          });
           if (code !== 0) {
             errors.push(`simctl delete unavailable: ${stderr.trim()}`);
             continue;

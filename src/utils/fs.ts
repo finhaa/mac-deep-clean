@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { assertSafeToDelete } from './paths.js';
 import { run } from './exec.js';
+import { assertSafeToDelete } from './paths.js';
 import { addPermissionWarning } from './warnings.js';
 
 const SIZE_TIMEOUT_MS = 30_000;

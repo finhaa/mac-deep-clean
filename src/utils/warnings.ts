@@ -51,30 +51,19 @@ export function flushWarnings(): string[] {
 
   if (fda.length > 0 && sumBytes(fda) >= NOISE_THRESHOLD_BYTES) {
     out.push(
-      `${fda.length} path(s) under ~/Library need Full Disk Access ` +
-        `(≥ ${formatMb(sumBytes(fda))} partially read):\n` +
-        `    ${sampleLines(fda)}\n` +
-        '    Fix: System Settings → Privacy & Security → Full Disk Access\n' +
-        `    → add ${terminalName()} and restart it.`,
+      `${fda.length} path(s) under ~/Library need Full Disk Access (≥ ${formatMb(sumBytes(fda))} partially read):\n    ${sampleLines(fda)}\n    Fix: System Settings → Privacy & Security → Full Disk Access\n    → add ${terminalName()} and restart it.`,
     );
   }
 
   if (sudo.length > 0 && sumBytes(sudo) >= NOISE_THRESHOLD_BYTES) {
     out.push(
-      `${sudo.length} system path(s) are root-owned — FDA can't fix these ` +
-        `(≥ ${formatMb(sumBytes(sudo))} partially read):\n` +
-        `    ${sampleLines(sudo)}\n` +
-        '    Fix: npm run build && sudo node dist/index.js scan',
+      `${sudo.length} system path(s) are root-owned — FDA can't fix these (≥ ${formatMb(sumBytes(sudo))} partially read):\n    ${sampleLines(sudo)}\n    Fix: npm run build && sudo node dist/index.js scan`,
     );
   }
 
   if (other.length > 0 && sumBytes(other) >= NOISE_THRESHOLD_BYTES) {
-    const note = isRoot
-      ? ' (running as root and still unreadable — likely SIP-protected)'
-      : '';
-    out.push(
-      `${other.length} other path(s) were unreadable${note}:\n    ${sampleLines(other)}`,
-    );
+    const note = isRoot ? ' (running as root and still unreadable — likely SIP-protected)' : '';
+    out.push(`${other.length} other path(s) were unreadable${note}:\n    ${sampleLines(other)}`);
   }
 
   return out;

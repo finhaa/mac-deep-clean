@@ -11,10 +11,7 @@ export class MailDownloadsScanner extends BaseScanner {
   readonly risk = 'safe' as const;
 
   async scan(): Promise<ScanResult[]> {
-    const target = path.join(
-      HOME,
-      'Library/Containers/com.apple.mail/Data/Library/Mail Downloads',
-    );
+    const target = path.join(HOME, 'Library/Containers/com.apple.mail/Data/Library/Mail Downloads');
     if (!(await pathExists(target))) return [];
     const size = await getSize(target);
     if (size === 0) return [];

@@ -1,12 +1,12 @@
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { getAllScanners } from '../scanners/index.js';
 import { runScanners } from '../runner.js';
+import { getAllScanners } from '../scanners/index.js';
 import { run } from '../utils/exec.js';
+import { colorRisk, colorSize, formatBytes } from '../utils/format.js';
 import { getSize, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
-import { colorRisk, colorSize, formatBytes } from '../utils/format.js';
 
 interface DiskInfo {
   total: number;

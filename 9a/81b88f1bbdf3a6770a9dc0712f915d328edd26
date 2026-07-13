@@ -1,0 +1,37 @@
+src/commands/clean.ts
+  s_ab39754d5d4a1e::t_4bda1fd7442320 5-6,36-41,49,106
+src/scanners/temp-files.ts
+  s_ab39754d5d4a1e::t_fb862d2f24b409 5,46-59
+src/scanners/time-machine.test.ts
+  s_48567215297a1c::t_2100567552ba0e 1-42
+src/scanners/time-machine.ts
+  s_ab39754d5d4a1e::t_f2fdfcd8d6ae04 41-43,48-52,60,63
+src/utils/paths.test.ts
+  s_ab39754d5d4a1e::t_a4228ba505a6c8 45-49
+src/utils/paths.ts
+  s_ab39754d5d4a1e::t_b751df6cfc8211 50-54,63-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "9a81b88f1bbdf3a6770a9dc0712f915d328edd26",
+  "prompts": {},
+  "sessions": {
+    "s_48567215297a1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad2111431cdfc5128",
+        "model": "unknown"
+      },
+      "human_author": "Rafael Farias Lima <finha.farias@outlook.com>"
+    },
+    "s_ab39754d5d4a1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b847684f-010c-4e19-91e1-ff6ee1c079e9",
+        "model": "unknown"
+      },
+      "human_author": "Rafael Farias Lima <finha.farias@outlook.com>"
+    }
+  }
+}

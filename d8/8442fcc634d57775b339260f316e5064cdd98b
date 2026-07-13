@@ -1,0 +1,39 @@
+src/commands/doctor.ts
+  s_ab39754d5d4a1e::t_ba374b37dfcf14 5,7
+src/commands/duplicates.ts
+  s_ab39754d5d4a1e::t_6882aefcccebe2 8,115
+src/commands/purge.ts
+  s_ab39754d5d4a1e::t_d5edfb7ae974a3 8
+src/commands/scan.ts
+  s_ab39754d5d4a1e::t_8c197b5142032b 3,70
+src/scanners/electron-apps.ts
+  s_ab39754d5d4a1e::t_7b4fc55a540c61 75
+src/scanners/ios-simulators.ts
+  s_ab39754d5d4a1e::t_2e8a9bdb09324e 74-76
+src/scanners/mail-downloads.ts
+  s_ab39754d5d4a1e::t_1aeea67cc3532e 14
+src/scanners/spotify.ts
+  s_ab39754d5d4a1e::t_6735009da9e533 16,20
+src/utils/fs.ts
+  s_ab39754d5d4a1e::t_9376f1ee78d07b 4
+src/utils/partition.ts
+  s_ab39754d5d4a1e::t_a9865627233658 1
+src/utils/warnings.ts
+  s_ab39754d5d4a1e::t_3ef07b1842b5ec 54,60,65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "d88442fcc634d57775b339260f316e5064cdd98b",
+  "prompts": {},
+  "sessions": {
+    "s_ab39754d5d4a1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b847684f-010c-4e19-91e1-ff6ee1c079e9",
+        "model": "unknown"
+      },
+      "human_author": "Rafael Farias Lima <finha.farias@outlook.com>"
+    }
+  }
+}

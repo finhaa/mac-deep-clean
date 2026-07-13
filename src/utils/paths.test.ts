@@ -42,4 +42,9 @@ describe('assertSafeToDelete', () => {
       assertSafeToDelete(path.join(os.homedir(), 'Library/Application Support/Claude/Cache')),
     ).not.toThrow();
   });
+
+  it('throws when target is an ancestor of a protected path', () => {
+    expect(() => assertSafeToDelete('/private/var')).toThrow(/ancestor of protected/);
+    expect(() => assertSafeToDelete(path.join(os.homedir(), 'Library'))).toThrow();
+  });
 });

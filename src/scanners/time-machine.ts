@@ -38,15 +38,18 @@ export class TimeMachineScanner extends BaseScanner {
         freed += r.size;
         continue;
       }
-      const { stdout, code, stderr } = await run(
-        'tmutil listlocalsnapshotdates / | tail -n +2',
-        { timeout: 10_000 },
-      );
+      const { stdout, code, stderr } = await run('tmutil listlocalsnapshotdates / | tail -n +2', {
+        timeout: 10_000,
+      });
       if (code !== 0) {
         errors.push(`tmutil list: ${stderr}`);
         continue;
       }
-      const dates = stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+      const dates = stdout
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      let anyFailed = false;
       for (const date of dates) {
         const { code: delCode, stderr: delErr } = await run(
           `sudo tmutil deletelocalsnapshots ${date}`,
@@ -54,9 +57,10 @@ export class TimeMachineScanner extends BaseScanner {
         );
         if (delCode !== 0) {
           errors.push(`delete ${date}: ${delErr}`);
+          anyFailed = true;
         }
       }
-      freed += r.size;
+      if (!anyFailed) freed += r.size;
     }
     return { freed, errors };
   }

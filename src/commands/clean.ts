@@ -1,9 +1,9 @@
 import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import ora from 'ora';
-import { getAllScanners } from '../scanners/index.js';
 import { runScanners } from '../runner.js';
-import type { CleanOptions, ScannerReport, ScanResult } from '../types.js';
+import { getAllScanners } from '../scanners/index.js';
+import type { CleanOptions, ScanResult, ScannerReport } from '../types.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
 import { partitionCleanable } from '../utils/partition.js';
 import { flushWarnings } from '../utils/warnings.js';
@@ -33,6 +33,12 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
 
   const rawReports = await runScanners(scanners, { deep: options.deep });
   const { reports, infoItems } = partitionCleanable(rawReports);
+  if (!options.risky && !options.category) {
+    for (const report of reports) {
+      report.results = report.results.filter((item) => item.risk !== 'risky');
+      report.totalSize = report.results.reduce((s, i) => s + i.size, 0);
+    }
+  }
   const warnings = flushWarnings();
   if (warnings.length > 0) {
     console.log(chalk.yellow('\nWarnings:'));
@@ -40,9 +46,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   }
   if (infoItems.length > 0) {
     const infoTotal = infoItems.reduce((s, i) => s + i.size, 0);
-    console.log(
-      `\n${chalk.grey(`ℹ Not cleanable by this tool — ${formatBytes(infoTotal)}:`)}`,
-    );
+    console.log(`\n${chalk.grey(`ℹ Not cleanable by this tool — ${formatBytes(infoTotal)}:`)}`);
     for (const item of infoItems) {
       console.log(
         `  ${chalk.grey('•')} ${truncate(item.label, 50).padEnd(52)} ${colorSize(item.size)}`,
@@ -99,7 +103,7 @@ async function promptSelection(reports: ScannerReport[]): Promise<ScanResult[]> 
     const choices = report.results.map((r, idx) => ({
       name: `${truncate(r.label, 50).padEnd(52)} ${colorSize(r.size)}`,
       value: idx,
-      checked: report.risk === 'safe',
+      checked: r.risk === 'safe',
     }));
 
     const selectedIdx = await checkbox<number>({

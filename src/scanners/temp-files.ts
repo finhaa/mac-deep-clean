@@ -2,6 +2,7 @@ import os from 'node:os';
 import type { CleanResult, ScanResult } from '../types.js';
 import { run } from '../utils/exec.js';
 import { getSize, pathExists } from '../utils/fs.js';
+import { assertSafeToDelete } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
 export class TempFilesScanner extends BaseScanner {
@@ -42,12 +43,20 @@ export class TempFilesScanner extends BaseScanner {
     const user = process.env.USER ?? '';
     for (const r of results) {
       try {
-        if (!dryRun) {
-          const escaped = r.path.replace(/(["\\$`])/g, '\\$1');
-          const filter = user ? `-user "${user}"` : '';
-          await run(`find "${escaped}" ${filter} -type f -mtime +1 -delete 2>/dev/null`, {
-            timeout: 60_000,
-          });
+        assertSafeToDelete(r.path);
+        if (dryRun) {
+          freed += r.size;
+          continue;
+        }
+        const escaped = r.path.replace(/(["\\$`])/g, '\\$1');
+        const filter = user ? `-user "${user}"` : '';
+        const { code, stderr } = await run(
+          `find "${escaped}" ${filter} -type f -mtime +1 -delete`,
+          { timeout: 60_000 },
+        );
+        if (code !== 0) {
+          errors.push(`${r.path}: ${stderr.trim() || `find exited ${code}`}`);
+          continue;
         }
         freed += r.size;
       } catch (err) {

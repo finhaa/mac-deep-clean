@@ -1,0 +1,19 @@
+.gitignore
+  s_ab39754d5d4a1e::t_b2357beaa95173 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "975733f879634c19e546bcd45043be502a75ce36",
+  "prompts": {},
+  "sessions": {
+    "s_ab39754d5d4a1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b847684f-010c-4e19-91e1-ff6ee1c079e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rafael Farias Lima <finha.farias@outlook.com>"
+    }
+  }
+}

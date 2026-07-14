@@ -1,4 +1,4 @@
-import type { ScannerReport, ScanResult } from '../types.js';
+import type { ScanResult, ScannerReport } from '../types.js';
 
 export interface PartitionedReports {
   reports: ScannerReport[];

@@ -47,6 +47,11 @@ export function isProtectedPath(target: string): boolean {
   return false;
 }
 
+function isAncestorOf(ancestor: string, descendant: string): boolean {
+  const rel = path.relative(ancestor, descendant);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 export function assertSafeToDelete(target: string): void {
   const resolved = path.resolve(expandHome(target));
   if (isProtectedPath(resolved)) {
@@ -54,5 +59,11 @@ export function assertSafeToDelete(target: string): void {
   }
   if (resolved === '/' || resolved.split(path.sep).filter(Boolean).length < 2) {
     throw new Error(`Refusing to delete near-root path: ${resolved}`);
+  }
+  for (const protectedPath of PROTECTED_PATHS) {
+    const p = path.resolve(protectedPath);
+    if (isAncestorOf(resolved, p)) {
+      throw new Error(`Refusing to delete ancestor of protected path: ${resolved} (contains ${p})`);
+    }
   }
 }

@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial 25-scanner suite covering wallpaper cache, Electron app caches,
+- Initial 26-scanner suite covering wallpaper cache, Electron app caches,
   containers, screen recording apps, Docker, Android SDK/AVDs,
   iOS simulators + Xcode DerivedData, iOS device backups, Time Machine
   snapshots, APFS snapshots, music creation libraries, browsers, dev
   caches, Homebrew, JetBrains IDEs, Spotify, Mail Downloads, Diagnostic
   Reports, Saved Application State, temp files, Trash, orphaned
-  LaunchAgents, logs, user caches, and system caches.
+  LaunchAgents, logs, user caches, system caches, and project build
+  artifacts.
 - `purge` command that walks developer project roots
   (`~/code`, `~/Projects`, `~/dev`, …) and removes build artifact dirs
   (`node_modules`, `.venv`, `target`, `Pods`, `.next`, `.terraform`,
@@ -40,8 +41,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflow on `macos-latest` running lint, typecheck, test, and build
   on push and pull request.
 
+### Fixed
+
+- `clean --deep` no longer deletes risky Electron app state (conversations,
+  workspaces) without `--risky`. Risk is now gated per item, including in
+  `--yes` mode, matching the documented behavior.
+- Temp Files cleanup now runs `assertSafeToDelete` before shelling out to
+  `find`, and no longer reports space as freed when `find` fails.
+- Time Machine cleanup no longer reports success when every snapshot
+  deletion fails.
+
 ### Safety
 
+- `assertSafeToDelete` now also rejects any target that is an ancestor of a
+  protected path (e.g. deleting `/private/var` would remove `/private/var/db`).
 - `PROTECTED_PATHS` prevents deletion of home, Documents, Desktop, Downloads,
   Pictures, Music, Movies, .ssh, .gnupg, and system directories.
 - `assertSafeToDelete` rejects `/` and any near-root path.

@@ -13,17 +13,11 @@ export class SpotifyScanner extends BaseScanner {
   async scan(): Promise<ScanResult[]> {
     const targets: Array<{ path: string; label: string }> = [
       {
-        path: path.join(
-          HOME,
-          'Library/Application Support/Spotify/PersistentCache',
-        ),
+        path: path.join(HOME, 'Library/Application Support/Spotify/PersistentCache'),
         label: 'Spotify PersistentCache (App Support)',
       },
       {
-        path: path.join(
-          HOME,
-          'Library/Caches/com.spotify.client/Data',
-        ),
+        path: path.join(HOME, 'Library/Caches/com.spotify.client/Data'),
         label: 'Spotify Data cache',
       },
       {

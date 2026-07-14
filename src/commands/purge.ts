@@ -4,8 +4,8 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { ProjectArtifactsScanner } from '../scanners/project-artifacts.js';
 import type { ScanResult } from '../types.js';
-import { isDirectory } from '../utils/fs.js';
 import { colorSize, formatBytes, truncate } from '../utils/format.js';
+import { isDirectory } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 
 interface PurgeOptions {

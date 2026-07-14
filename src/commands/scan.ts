@@ -1,10 +1,10 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
+import { runScanners } from '../runner.js';
 import { getAllScanners } from '../scanners/index.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
 import { partitionCleanable } from '../utils/partition.js';
 import { flushWarnings } from '../utils/warnings.js';
-import { runScanners } from '../runner.js';
 
 export async function scanCommand(
   options: { category?: string; deep?: boolean } = {},
@@ -67,9 +67,7 @@ export async function scanCommand(
 
   if (infoItems.length > 0) {
     const infoTotal = infoItems.reduce((s, i) => s + i.size, 0);
-    console.log(
-      `\n${chalk.grey(`ℹ Not cleanable by this tool — ${formatBytes(infoTotal)}`)}`,
-    );
+    console.log(`\n${chalk.grey(`ℹ Not cleanable by this tool — ${formatBytes(infoTotal)}`)}`);
     for (const item of infoItems) {
       console.log(
         `  ${chalk.grey('•')} ${truncate(item.label, 50).padEnd(52)} ${colorSize(item.size)}`,

@@ -72,10 +72,7 @@ export class ElectronAppsScanner extends BaseScanner {
             label: `${appName} — full app data (state)`,
             category: this.category,
             risk: 'risky',
-            description:
-              `${appName} total ${formatMb(fullSize)}, caches ${formatMb(cacheSum)}, ` +
-              `state ${formatMb(stateSize)} (IndexedDB, Local Storage, workspaceStorage, ` +
-              'history, sessions). DELETING LOSES conversations / workspaces / extensions.',
+            description: `${appName} total ${formatMb(fullSize)}, caches ${formatMb(cacheSum)}, state ${formatMb(stateSize)} (IndexedDB, Local Storage, workspaceStorage, history, sessions). DELETING LOSES conversations / workspaces / extensions.`,
           });
         }
       }

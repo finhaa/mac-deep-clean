@@ -4,8 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { isDirectory } from '../utils/fs.js';
 import { colorSize, formatBytes, truncate } from '../utils/format.js';
+import { isDirectory } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 
 interface DuplicatesOptions {
@@ -112,8 +112,7 @@ export async function duplicatesCommand(
     const first = group.files[0];
     if (!first) continue;
     console.log(
-      `${chalk.bold(`${group.files.length}× ${formatBytes(first.size)}`)} ` +
-        chalk.grey(`(${formatBytes(group.wasted)} wasted)`),
+      `${chalk.bold(`${group.files.length}× ${formatBytes(first.size)}`)} ${chalk.grey(`(${formatBytes(group.wasted)} wasted)`)}`,
     );
     for (const f of group.files) {
       console.log(`  ${chalk.grey('•')} ${truncate(displayPath(f.path), 100)}`);

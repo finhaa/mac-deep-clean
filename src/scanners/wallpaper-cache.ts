@@ -6,14 +6,17 @@ import { BaseScanner } from './base-scanner.js';
 
 const WALLPAPER_BUNDLE_IDS = ['com.apple.wallpaper.agent', 'com.apple.wallpaper'];
 
-const WALLPAPER_PATHS: Array<{ path: string; label: string }> = [
+const WALLPAPER_PATHS: Array<{ path: string; label: string; description: string }> = [
   {
-    path: path.join(HOME, 'Library/Application Support/com.apple.wallpaper'),
-    label: 'Application Support/com.apple.wallpaper',
+    // The sibling Store/Index.plist holds the user's wallpaper choice, so only aerials go.
+    path: path.join(HOME, 'Library/Application Support/com.apple.wallpaper/aerials'),
+    label: 'Application Support/com.apple.wallpaper/aerials',
+    description: 'Downloaded aerial videos — re-downloaded when used; wallpaper settings are kept',
   },
   ...WALLPAPER_BUNDLE_IDS.map((id) => ({
     path: path.join(HOME, 'Library/Containers', id, 'Data/Library/Caches'),
     label: `Containers/${id}/Caches`,
+    description: 'Wallpaper cache — regenerates automatically',
   })),
 ];
 
@@ -37,7 +40,7 @@ export class WallpaperCacheScanner extends BaseScanner {
         label: target.label,
         category: this.category,
         risk: this.risk,
-        description: 'Wallpaper cache — regenerates automatically',
+        description: target.description,
       });
     }
     return results.sort((a, b) => b.size - a.size);

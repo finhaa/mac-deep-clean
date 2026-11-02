@@ -70,6 +70,7 @@ export class ProjectArtifactsScanner extends BaseScanner {
       for (const line of stdout.split('\n')) {
         const target = line.trim();
         if (!target) continue;
+        if (await isInsideLinkedWorktree(target, root)) continue;
         const size = await getSize(target);
         if (size < 10 * 1024 * 1024) continue;
         const relative = path.relative(HOME, target);
@@ -96,6 +97,17 @@ export class ProjectArtifactsScanner extends BaseScanner {
     }
     return dedupeByRealpath(found);
   }
+}
+
+// A linked git worktree has a `.git` file; its dependencies belong to a live branch.
+export async function isInsideLinkedWorktree(target: string, root: string): Promise<boolean> {
+  let dir = path.dirname(target);
+  while (dir !== root && dir !== path.dirname(dir)) {
+    const st = await fs.lstat(path.join(dir, '.git')).catch(() => null);
+    if (st?.isFile()) return true;
+    dir = path.dirname(dir);
+  }
+  return false;
 }
 
 async function dedupeByRealpath(paths: string[]): Promise<string[]> {

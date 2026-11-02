@@ -7,7 +7,8 @@ import { BaseScanner } from './base-scanner.js';
 export class SpotifyScanner extends BaseScanner {
   readonly name = 'Spotify';
   readonly category = 'spotify';
-  readonly description = 'Spotify PersistentCache and user caches';
+  readonly description =
+    'Spotify PersistentCache (the generic ~/Library/Caches client cache is in User Caches)';
   readonly risk = 'safe' as const;
 
   async scan(): Promise<ScanResult[]> {
@@ -15,10 +16,6 @@ export class SpotifyScanner extends BaseScanner {
       {
         path: path.join(HOME, 'Library/Application Support/Spotify/PersistentCache'),
         label: 'Spotify PersistentCache (App Support)',
-      },
-      {
-        path: path.join(HOME, 'Library/Caches/com.spotify.client/Data'),
-        label: 'Spotify Data cache',
       },
       {
         path: path.join(

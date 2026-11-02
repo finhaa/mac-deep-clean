@@ -4,15 +4,32 @@ import { getSize, isDirectory, listDir } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
-const COVERED_PREFIXES = [
-  'Google/AndroidStudio',
+const COVERED_ELSEWHERE = new Set([
+  'Google',
+  'Arc',
+  'com.apple.Safari',
+  'Firefox',
+  'BraveSoftware',
+  'Microsoft Edge',
+  'JetBrains',
   'Homebrew',
   'pip',
   'pypoetry',
   'uv',
   'deno',
   'Yarn',
-];
+  'CocoaPods',
+  'pre-commit',
+  'Composer',
+  'Bazel',
+  // Downloaded browser binaries, not a cache: deleting forces a reinstall.
+  'ms-playwright',
+  'ms-playwright-mcp',
+]);
+
+export function isCoveredElsewhere(name: string): boolean {
+  return COVERED_ELSEWHERE.has(name);
+}
 
 export class UserCacheScanner extends BaseScanner {
   readonly name = 'User Caches';
@@ -26,7 +43,7 @@ export class UserCacheScanner extends BaseScanner {
     const results: ScanResult[] = [];
     for (const name of await listDir(root)) {
       if (name.startsWith('.')) continue;
-      if (COVERED_PREFIXES.some((p) => name.startsWith(p))) continue;
+      if (isCoveredElsewhere(name)) continue;
       const target = path.join(root, name);
       if (!(await isDirectory(target))) continue;
       const size = await getSize(target);

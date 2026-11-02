@@ -6,6 +6,7 @@ import { getAllScanners } from '../scanners/index.js';
 import type { CleanOptions, ScanResult, ScannerReport } from '../types.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
 import { partitionCleanable } from '../utils/partition.js';
+import { autoSelect } from '../utils/selection.js';
 import { flushWarnings } from '../utils/warnings.js';
 
 export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
@@ -63,7 +64,15 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   let selected: ScanResult[];
 
   if (options.yes) {
-    selected = nonEmpty.flatMap((r) => r.results);
+    selected = autoSelect(nonEmpty, Boolean(options.risky || options.category));
+    const skipped = nonEmpty.reduce((s, r) => s + r.results.length, 0) - selected.length;
+    if (skipped > 0) {
+      console.log(
+        chalk.grey(
+          `\nSkipped ${skipped} non-safe item(s). Run without --yes to pick them, or add --risky.`,
+        ),
+      );
+    }
   } else {
     selected = await promptSelection(nonEmpty);
   }

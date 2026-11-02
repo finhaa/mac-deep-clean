@@ -42,7 +42,7 @@ mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
 mac-deep-clean purge --dry-run    # Preview project artifact deletion
-mac-deep-clean purge --yes        # Skip confirmation
+mac-deep-clean purge --yes        # Skip confirmation (leaves .venv/venv for the interactive picker)
 mac-deep-clean purge --path ~/work ~/oss
                                   # Override the default dev search roots
 mac-deep-clean duplicates ~/Downloads --min-size 5MB

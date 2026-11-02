@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { ScanResult } from '../types.js';
 import { run } from '../utils/exec.js';
-import { getSize, isDirectory } from '../utils/fs.js';
+import { getSize, isDirectory, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -71,6 +71,7 @@ export class ProjectArtifactsScanner extends BaseScanner {
         const target = line.trim();
         if (!target) continue;
         if (await isInsideLinkedWorktree(target, root)) continue;
+        if (!(await looksLikeBuildArtifact(target))) continue;
         const size = await getSize(target);
         if (size < 10 * 1024 * 1024) continue;
         const relative = path.relative(HOME, target);
@@ -97,6 +98,28 @@ export class ProjectArtifactsScanner extends BaseScanner {
     }
     return dedupeByRealpath(found);
   }
+}
+
+// Names too generic to trust alone: only a build artifact when its project file sits beside it.
+const REQUIRED_SIBLINGS: Record<string, string[]> = {
+  target: ['Cargo.toml', 'pom.xml', 'build.sbt'],
+  Pods: ['Podfile'],
+};
+
+// Virtualenvs may hold packages that no requirements file records, so purge leaves them to a manual pick.
+const NOT_CHECKED_BY_DEFAULT = new Set(['.venv', 'venv']);
+
+export async function looksLikeBuildArtifact(target: string): Promise<boolean> {
+  const markers = REQUIRED_SIBLINGS[path.basename(target)];
+  if (!markers) return true;
+  for (const marker of markers) {
+    if (await pathExists(path.join(path.dirname(target), marker))) return true;
+  }
+  return false;
+}
+
+export function isCheckedByDefault(target: string): boolean {
+  return !NOT_CHECKED_BY_DEFAULT.has(path.basename(target));
 }
 
 // A linked git worktree has a `.git` file; its dependencies belong to a live branch.

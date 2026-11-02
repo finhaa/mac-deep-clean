@@ -2,7 +2,11 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { isInsideLinkedWorktree } from './project-artifacts.js';
+import {
+  isCheckedByDefault,
+  isInsideLinkedWorktree,
+  looksLikeBuildArtifact,
+} from './project-artifacts.js';
 
 let root: string;
 
@@ -12,10 +16,45 @@ beforeAll(async () => {
   await fs.mkdir(path.join(root, 'main/node_modules'), { recursive: true });
   await fs.mkdir(path.join(root, 'wt/pkg/node_modules'), { recursive: true });
   await fs.writeFile(path.join(root, 'wt/.git'), 'gitdir: /elsewhere/.git/worktrees/wt\n');
+  await fs.mkdir(path.join(root, 'rust/target'), { recursive: true });
+  await fs.writeFile(path.join(root, 'rust/Cargo.toml'), '');
+  await fs.mkdir(path.join(root, 'bare/target'), { recursive: true });
+  await fs.mkdir(path.join(root, 'ios/Pods'), { recursive: true });
+  await fs.writeFile(path.join(root, 'ios/Podfile'), '');
+  await fs.mkdir(path.join(root, 'loose/Pods'), { recursive: true });
+  await fs.mkdir(path.join(root, 'js/node_modules'), { recursive: true });
 });
 
 afterAll(async () => {
   await fs.rm(root, { recursive: true, force: true });
+});
+
+describe('looksLikeBuildArtifact', () => {
+  it('accepts a generic name only beside its project file', async () => {
+    expect(await looksLikeBuildArtifact(path.join(root, 'rust/target'))).toBe(true);
+    expect(await looksLikeBuildArtifact(path.join(root, 'ios/Pods'))).toBe(true);
+  });
+
+  it('rejects a generic name with no project file beside it', async () => {
+    expect(await looksLikeBuildArtifact(path.join(root, 'bare/target'))).toBe(false);
+    expect(await looksLikeBuildArtifact(path.join(root, 'loose/Pods'))).toBe(false);
+  });
+
+  it('needs nothing for an unambiguous name', async () => {
+    expect(await looksLikeBuildArtifact(path.join(root, 'js/node_modules'))).toBe(true);
+  });
+});
+
+describe('isCheckedByDefault', () => {
+  it('leaves virtualenvs unchecked, since they may not be reproducible', () => {
+    expect(isCheckedByDefault('/p/.venv')).toBe(false);
+    expect(isCheckedByDefault('/p/venv')).toBe(false);
+  });
+
+  it('keeps ordinary build output checked', () => {
+    expect(isCheckedByDefault('/p/node_modules')).toBe(true);
+    expect(isCheckedByDefault('/p/.next')).toBe(true);
+  });
 });
 
 describe('isInsideLinkedWorktree', () => {

@@ -2,7 +2,7 @@ import path from 'node:path';
 import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import ora from 'ora';
-import { ProjectArtifactsScanner } from '../scanners/project-artifacts.js';
+import { ProjectArtifactsScanner, isCheckedByDefault } from '../scanners/project-artifacts.js';
 import type { ScanResult } from '../types.js';
 import { colorSize, formatBytes, truncate } from '../utils/format.js';
 import { isDirectory } from '../utils/fs.js';
@@ -48,18 +48,24 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
   let selected: ScanResult[];
 
   if (options.yes) {
-    for (const r of results.slice(0, 30)) {
+    selected = results.filter((r) => isCheckedByDefault(r.path));
+    for (const r of selected.slice(0, 30)) {
       console.log(`  ${chalk.grey('•')} ${truncate(r.label, 60).padEnd(62)} ${colorSize(r.size)}`);
     }
-    if (results.length > 30) {
-      console.log(chalk.grey(`  … and ${results.length - 30} more`));
+    if (selected.length > 30) {
+      console.log(chalk.grey(`  … and ${selected.length - 30} more`));
     }
-    selected = results;
+    const skipped = results.length - selected.length;
+    if (skipped > 0) {
+      console.log(
+        chalk.grey(`\nSkipped ${skipped} virtualenv dir(s). Run without --yes to pick them.`),
+      );
+    }
   } else {
     const choices = results.map((r, idx) => ({
       name: `${truncate(r.label, 60).padEnd(62)} ${colorSize(r.size)}`,
       value: idx,
-      checked: true,
+      checked: isCheckedByDefault(r.path),
     }));
 
     const selectedIdx = await checkbox<number>({

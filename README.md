@@ -8,7 +8,7 @@ Most Mac cleaners cover generic caches, logs, Homebrew, and Xcode. They ignore t
 - Electron app caches (Claude, Cursor, VS Code, Slack, Discord, Figma, Linear, Obsidian…)
 - Granular `~/Library/Containers` and `~/Library/Group Containers` caches
 - Screen recording apps (Cap, Screen Studio, OBS)
-- Docker full prune (images, containers, volumes, build cache)
+- Docker prune (unused images, stopped containers, build cache; volumes are kept)
 - Android SDK, emulators, AVDs
 - Time Machine local snapshots
 - APFS snapshots
@@ -100,10 +100,12 @@ Non-cache data — IndexedDB, Local Storage, `workspaceStorage`, history,
 sessions — is excluded because deleting it **loses conversations, workspaces,
 and extension state**.
 
-Pass `--deep` to additionally report a per-app "full app data (state)" entry
+Pass `--deep` to additionally report the big state folders of each app, one
+entry per folder (for example `IndexedDB`, `vm_bundles`, `User/workspaceStorage`),
 marked `risky`. On a real Mac that's typically 10+ GB of Claude conversations,
-Cursor workspace storage, VS Code extensions, etc. Review carefully; export
-anything you care about before cleaning.
+Cursor workspace storage, VS Code extensions, etc. The app folder itself and
+settings files (`settings.json`, `keybindings.json`, snippets, MCP config) are
+never listed. Review carefully; export anything you care about before cleaning.
 
 ## Scanners
 

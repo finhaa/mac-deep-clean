@@ -15,7 +15,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   if (options.deep)
     console.log(
       chalk.yellow(
-        'DEEP mode: Electron app full-state entries will appear — review carefully before selecting.\n',
+        'DEEP mode: Electron app state folders will appear — review carefully before selecting.\n',
       ),
     );
 

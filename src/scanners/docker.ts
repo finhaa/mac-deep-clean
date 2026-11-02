@@ -5,10 +5,30 @@ import { getSize, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
+const SIZE_MULTIPLIERS: Record<string, number> = {
+  B: 1,
+  KB: 1024,
+  MB: 1024 ** 2,
+  GB: 1024 ** 3,
+  TB: 1024 ** 4,
+};
+
+// Volumes are skipped: the prune below never removes them, so they are not reclaimable here.
+export function reclaimableBytes(dfOutput: string): number {
+  let total = 0;
+  for (const line of dfOutput.split('\n')) {
+    if (/^Local Volumes/i.test(line)) continue;
+    const match = line.match(/(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)\s*\((\d+)%\)/i);
+    if (!match) continue;
+    total += Number.parseFloat(match[1]!) * (SIZE_MULTIPLIERS[match[2]!.toUpperCase()] ?? 0);
+  }
+  return Math.round(total);
+}
+
 export class DockerScanner extends BaseScanner {
   readonly name = 'Docker';
   readonly category = 'docker';
-  readonly description = 'Docker images, containers, volumes, build cache';
+  readonly description = 'Docker unused images, stopped containers, build cache (volumes are kept)';
   readonly risk = 'risky' as const;
 
   async scan(): Promise<ScanResult[]> {
@@ -26,10 +46,11 @@ export class DockerScanner extends BaseScanner {
         results.push({
           path: 'docker:system',
           size: total,
-          label: 'Docker system (images, containers, volumes, build cache)',
+          label: 'Docker system (unused images, stopped containers, build cache)',
           category: this.category,
           risk: this.risk,
-          description: 'docker system prune -a --volumes -f',
+          description:
+            'docker system prune -a -f — unused images, stopped containers, build cache. Volumes (databases) are kept.',
         });
       }
     }
@@ -56,23 +77,7 @@ export class DockerScanner extends BaseScanner {
 
   private async reclaimableBytes(): Promise<number> {
     const { stdout, code } = await run('docker system df', { timeout: 10_000 });
-    if (code !== 0) return 0;
-    let total = 0;
-    for (const line of stdout.split('\n')) {
-      const match = line.match(/(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)\s*\((\d+)%\)/i);
-      if (!match) continue;
-      const value = Number.parseFloat(match[1]!);
-      const unit = match[2]!.toUpperCase();
-      const multipliers: Record<string, number> = {
-        B: 1,
-        KB: 1024,
-        MB: 1024 ** 2,
-        GB: 1024 ** 3,
-        TB: 1024 ** 4,
-      };
-      total += value * (multipliers[unit] ?? 0);
-    }
-    return Math.round(total);
+    return code === 0 ? reclaimableBytes(stdout) : 0;
   }
 
   override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
@@ -82,7 +87,7 @@ export class DockerScanner extends BaseScanner {
     for (const r of results) {
       if (r.path === 'docker:system') {
         if (!dryRun) {
-          const { code, stderr } = await run('docker system prune -a --volumes -f', {
+          const { code, stderr } = await run('docker system prune -a -f', {
             timeout: 120_000,
           });
           if (code !== 0) {

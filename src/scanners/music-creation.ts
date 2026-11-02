@@ -18,7 +18,6 @@ export class MusicCreationScanner extends BaseScanner {
         label: 'GarageBand (user)',
       },
       { path: path.join(HOME, 'Library/Application Support/Logic'), label: 'Logic (user)' },
-      { path: path.join(HOME, 'Library/Audio'), label: 'User Audio libraries' },
       { path: '/Library/Audio/Apple Loops', label: 'Apple Loops (system)' },
       { path: '/Library/Application Support/GarageBand', label: 'GarageBand (system)' },
       { path: '/Library/Application Support/Logic', label: 'Logic (system)' },

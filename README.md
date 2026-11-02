@@ -8,7 +8,7 @@ Most Mac cleaners cover generic caches, logs, Homebrew, and Xcode. They ignore t
 - Electron app caches (Claude, Cursor, VS Code, Slack, Discord, Figma, Linear, Obsidian…)
 - Granular `~/Library/Containers` and `~/Library/Group Containers` caches
 - Screen recording apps (Cap, Screen Studio, OBS)
-- Docker full prune (images, containers, volumes, build cache)
+- Docker prune (unused images, stopped containers, build cache; volumes are kept)
 - Android SDK, emulators, AVDs
 - Time Machine local snapshots
 - APFS snapshots
@@ -37,12 +37,12 @@ mac-deep-clean scan --deep        # Also report Electron app full state (risky)
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
 mac-deep-clean clean --risky      # Include risky categories (docker, Electron state)
-mac-deep-clean clean --yes        # Non-interactive; skip prompts (excludes risky unless --risky)
+mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky)
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
 mac-deep-clean purge --dry-run    # Preview project artifact deletion
-mac-deep-clean purge --yes        # Skip confirmation
+mac-deep-clean purge --yes        # Skip confirmation (leaves .venv/venv for the interactive picker)
 mac-deep-clean purge --path ~/work ~/oss
                                   # Override the default dev search roots
 mac-deep-clean duplicates ~/Downloads --min-size 5MB
@@ -100,10 +100,12 @@ Non-cache data — IndexedDB, Local Storage, `workspaceStorage`, history,
 sessions — is excluded because deleting it **loses conversations, workspaces,
 and extension state**.
 
-Pass `--deep` to additionally report a per-app "full app data (state)" entry
+Pass `--deep` to additionally report the big state folders of each app, one
+entry per folder (for example `IndexedDB`, `vm_bundles`, `User/workspaceStorage`),
 marked `risky`. On a real Mac that's typically 10+ GB of Claude conversations,
-Cursor workspace storage, VS Code extensions, etc. Review carefully; export
-anything you care about before cleaning.
+Cursor workspace storage, VS Code extensions, etc. The app folder itself and
+settings files (`settings.json`, `keybindings.json`, snippets, MCP config) are
+never listed. Review carefully; export anything you care about before cleaning.
 
 ## Scanners
 

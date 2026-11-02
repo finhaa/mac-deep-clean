@@ -27,7 +27,7 @@ export class LaunchAgentsScanner extends BaseScanner {
         const plistPath = path.join(root, name);
         const program = await readPlistProgram(plistPath);
         if (!program) continue;
-        if (await pathExists(program)) continue;
+        if (await programResolves(program)) continue;
         const stat = await fs.lstat(plistPath).catch(() => null);
         const size = stat?.size ?? 0;
         results.push({
@@ -42,6 +42,19 @@ export class LaunchAgentsScanner extends BaseScanner {
     }
     return results;
   }
+}
+
+const LAUNCHD_PATH = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+
+export async function programResolves(
+  program: string,
+  exists: (p: string) => Promise<boolean> = pathExists,
+): Promise<boolean> {
+  if (program.includes('/')) return exists(program);
+  for (const dir of LAUNCHD_PATH) {
+    if (await exists(path.join(dir, program))) return true;
+  }
+  return false;
 }
 
 async function readPlistProgram(plistPath: string): Promise<string | null> {

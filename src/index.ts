@@ -27,7 +27,7 @@ program
   .description('Interactively clean caches and reclaim space')
   .option('--dry-run', 'Preview only — no files deleted')
   .option('--risky', 'Include risky categories (docker, etc.)')
-  .option('-y, --yes', 'Skip confirmation (non-interactive)')
+  .option('-y, --yes', 'Skip prompts; selects only safe items unless --risky or --category is set')
   .option('-c, --category <name>', 'Only clean a specific category')
   .option('--deep', 'Include full Electron app state — requires --risky to clean')
   .action(async (opts) => {

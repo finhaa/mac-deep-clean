@@ -139,9 +139,17 @@ never listed. Review carefully; export anything you care about before cleaning.
 | User Caches           | `user-cache`         | safe     |
 | System Caches         | `system-cache`       | moderate |
 | Project Build Artifacts | `project-artifacts` | moderate |
+| Git Leaked Pack Files | `git-tmp-packs` | moderate |
 
 The `project-artifacts` scanner backs the dedicated `purge` command, but is
 also a normal category — `scan`/`clean --category project-artifacts` work too.
+
+The `git-tmp-packs` scanner looks for `tmp_pack_*` files (10 MB or more) in
+`.git/objects/pack` of repos under the same project roots. Git leaves one behind
+when a fetch is interrupted. Only files untouched for 10 minutes are listed, and
+the age is checked again right before deleting. It never runs `git`, and it is
+moderate risk, so `clean --yes` skips it; pick it in the list or use
+`--category git-tmp-packs`.
 
 Plus two extra commands:
 

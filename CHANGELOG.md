@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `purge --path` refuses roots that are protected, contain a protected path, or
   sit inside `/Applications`, `/Library`, `/opt` or `~/Library`, so `--path ~`
   can no longer offer `~/.gradle` or an app bundle's `node_modules`.
+- Logs and Diagnostic Reports no longer delete the folders themselves (the
+  `rmdir /Library/Logs` and `~/Library/Logs` permission errors) and Logs no
+  longer counts or removes the folders that Diagnostic Reports and JetBrains
+  report on their own, so no space is counted or deleted twice.
 
 ### Safety
 

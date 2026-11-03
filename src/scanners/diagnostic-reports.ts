@@ -1,6 +1,6 @@
 import path from 'node:path';
-import type { ScanResult } from '../types.js';
-import { getSize, pathExists } from '../utils/fs.js';
+import type { CleanResult, ScanResult } from '../types.js';
+import { clearDir, getSize, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -10,16 +10,17 @@ export class DiagnosticReportsScanner extends BaseScanner {
   readonly description = 'Crash reports and diagnostic logs';
   readonly risk = 'safe' as const;
 
+  targets: Array<{ path: string; label: string }> = [
+    {
+      path: path.join(HOME, 'Library/Logs/DiagnosticReports'),
+      label: 'User DiagnosticReports',
+    },
+    { path: '/Library/Logs/DiagnosticReports', label: 'System DiagnosticReports' },
+  ];
+
   async scan(): Promise<ScanResult[]> {
-    const targets: Array<{ path: string; label: string }> = [
-      {
-        path: path.join(HOME, 'Library/Logs/DiagnosticReports'),
-        label: 'User DiagnosticReports',
-      },
-      { path: '/Library/Logs/DiagnosticReports', label: 'System DiagnosticReports' },
-    ];
     const results: ScanResult[] = [];
-    for (const t of targets) {
+    for (const t of this.targets) {
       if (!(await pathExists(t.path))) continue;
       const size = await getSize(t.path);
       if (size === 0) continue;
@@ -33,5 +34,20 @@ export class DiagnosticReportsScanner extends BaseScanner {
       });
     }
     return results;
+  }
+
+  override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
+    let freed = 0;
+    const errors: string[] = [];
+    for (const r of results) {
+      if (dryRun) {
+        freed += r.size;
+        continue;
+      }
+      const cleared = await clearDir(r.path);
+      freed += cleared.freed;
+      errors.push(...cleared.errors);
+    }
+    return { freed, errors };
   }
 }

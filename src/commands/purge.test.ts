@@ -112,3 +112,15 @@ describe('purgeCommand options', () => {
     expect(rm()).not.toHaveBeenCalled();
   });
 });
+
+describe('purgeCommand --path', () => {
+  it.each([os.homedir(), '/Applications', '/opt'])(
+    'refuses %s as a root before scanning anything',
+    async (root) => {
+      await purgeCommand({ path: [root], yes: true });
+      expect(process.exitCode).toBe(1);
+      expect(state.scanners[0]?.searchRoots).toBeNull();
+      expect(removed()).toEqual([]);
+    },
+  );
+});

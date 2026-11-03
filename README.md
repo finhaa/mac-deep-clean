@@ -163,6 +163,8 @@ Plus two extra commands:
   `node_modules`, `.venv`, `target`, `Pods`, `.next`, `.terraform`,
   and friends. Dedupes by realpath so case-insensitive APFS doesn't
   double-count.
+  `--path` refuses your home folder, system folders and installed-software
+  folders such as `/Applications` and `~/Library`.
 - **`duplicates <path>`** — read-only sha256 duplicate file detector,
   scoped to a path you specify. Two-stage (size collision → hash) to
   keep it fast.

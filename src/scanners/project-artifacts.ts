@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types.js';
 import { findDirsNamed } from '../utils/find.js';
 import { getSize, isDirectory, pathExists } from '../utils/fs.js';
-import { HOME } from '../utils/paths.js';
+import { HOME, findProtectedDescendant, isProtectedPath } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
 const SEARCH_ROOTS = [
@@ -84,6 +84,22 @@ export class ProjectArtifactsScanner extends BaseScanner {
 
     return results.sort((a, b) => b.size - a.size);
   }
+}
+
+// Trees whose node_modules and similar dirs belong to installed software, not to a project.
+const NON_PROJECT_TREES = ['/Applications', '/Library', '/opt', path.join(HOME, 'Library')];
+
+/** Why `purge --path` must not walk `root`, or null when it is a plausible project folder. */
+export function purgeRootProblem(root: string): string | null {
+  const resolved = path.resolve(root);
+  if (isProtectedPath(resolved)) return `${resolved} is a protected path`;
+  const contained = findProtectedDescendant(resolved);
+  if (contained) return `${resolved} contains the protected path ${contained}`;
+  const tree = NON_PROJECT_TREES.find(
+    (t) => resolved === t || resolved.startsWith(`${t}${path.sep}`),
+  );
+  if (tree) return `${resolved} is inside ${tree}, which holds installed software, not projects`;
+  return null;
 }
 
 export async function resolveSearchRoots(explicit: string[] | null): Promise<string[]> {

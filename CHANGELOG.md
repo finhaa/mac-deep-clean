@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exact-match so their children remain cleanable.
 - Emptying the Trash no longer ignores files it cannot delete: each failure is
   reported and "freed" is the measured drop in size, not the planned size.
+- `purge --path` refuses roots that are protected, contain a protected path, or
+  sit inside `/Applications`, `/Library`, `/opt` or `~/Library`, so `--path ~`
+  can no longer offer `~/.gradle` or an app bundle's `node_modules`.
 
 ### Safety
 

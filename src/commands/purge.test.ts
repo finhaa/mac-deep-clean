@@ -69,6 +69,14 @@ describe('purgeCommand --yes', () => {
     expect(removed()).toEqual([NODE_MODULES]);
   });
 
+  it('never removes a protected path, even when the scanner offers it', async () => {
+    state.results = [art(os.homedir()), art(path.join(os.homedir(), '.ssh')), art(NODE_MODULES)];
+
+    await purgeCommand({ yes: true });
+
+    expect(removed()).toEqual([NODE_MODULES]);
+  });
+
   it('deletes nothing on a dry run', async () => {
     await purgeCommand({ yes: true, dryRun: true });
     expect(rm()).not.toHaveBeenCalled();

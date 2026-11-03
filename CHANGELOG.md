@@ -50,6 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `find`, and no longer reports space as freed when `find` fails.
 - Time Machine cleanup no longer reports success when every snapshot
   deletion fails.
+- The protected-path guard now protects whole subtrees for `/System`, `/usr`,
+  `~/Documents`, `~/Desktop`, `~/Downloads`, `~/Pictures`, `~/Music`,
+  `~/Movies`, `~/.ssh`, `~/.gnupg`, `~/Library/Keychains` and
+  `~/Library/Preferences` (also for other users' home folders), matched
+  case-insensitively. It used to match only the folder itself, so
+  `~/.ssh/id_rsa` was deletable. `purge` no longer offers artifacts inside
+  those folders. Cache container folders such as `~/Library/Caches` stay
+  exact-match so their children remain cleanable.
 
 ### Safety
 

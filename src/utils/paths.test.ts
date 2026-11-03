@@ -108,3 +108,60 @@ describe('assertSafeToDelete near-root guard', () => {
     expect(() => assertSafeToDelete('/tmp/mdc-fine')).not.toThrow();
   });
 });
+
+describe('protected subtrees (README: never touched, nor any directory that contains one)', () => {
+  const subtreeFiles = [
+    '/System/Library/CoreServices',
+    '/Library/System/x',
+    '/usr/local/lib/node_modules',
+    '/var/db/dslocal',
+    '/private/var/db/dslocal',
+    '/private/var/protected/x',
+    path.join(home, 'Documents/x'),
+    path.join(home, 'Documents/a/b/node_modules'),
+    path.join(home, 'Desktop/x'),
+    path.join(home, 'Downloads/x'),
+    path.join(home, 'Pictures/Photos Library.photoslibrary'),
+    path.join(home, 'Music/x'),
+    path.join(home, 'Movies/x'),
+    path.join(home, '.ssh/id_rsa'),
+    path.join(home, '.gnupg/private-keys-v1.d'),
+    path.join(home, 'Library/Keychains/login.keychain-db'),
+    path.join(home, 'Library/Preferences/com.apple.finder.plist'),
+    '/Users/other/Documents/x',
+    '/Users/other/.ssh/id_rsa',
+  ];
+
+  it.each(subtreeFiles)('refuses to delete %s', (target) => {
+    expect(isProtectedPath(target)).toBe(true);
+    expect(() => assertSafeToDelete(target)).toThrow(/Refusing to delete protected path/);
+  });
+
+  it('matches case-insensitively, like the default APFS volume', () => {
+    expect(() => assertSafeToDelete(path.join(home, 'DOCUMENTS/x'))).toThrow(/protected path/);
+    expect(() => assertSafeToDelete('/SYSTEM/Library/x')).toThrow(/protected path/);
+  });
+
+  it('does not treat a sibling that only shares a name prefix as protected', () => {
+    expect(isProtectedPath(path.join(home, 'Documents-old/x'))).toBe(false);
+    expect(isProtectedPath('/usr-local/x')).toBe(false);
+  });
+});
+
+describe('container directories stay exact-match so their children remain deletable', () => {
+  const deletable = [
+    path.join(home, 'Library/Caches/com.example.app'),
+    path.join(home, 'Library/Application Support/Claude/Cache'),
+    path.join(home, 'Library/Containers/com.apple.mail/Data/Library/Mail Downloads'),
+    path.join(home, 'Library/Group Containers/group.x/cache'),
+    path.join(home, 'Library/Logs/JetBrains'),
+    '/Library/Caches/com.apple.x',
+    '/Library/Logs/DiagnosticReports',
+    '/Library/Audio/Apple Loops',
+  ];
+
+  it.each(deletable)('allows %s', (target) => {
+    expect(isProtectedPath(target)).toBe(false);
+    expect(() => assertSafeToDelete(target)).not.toThrow();
+  });
+});

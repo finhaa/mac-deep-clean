@@ -3,34 +3,56 @@ import path from 'node:path';
 
 export const HOME = os.homedir();
 
-export const PROTECTED_PATHS: readonly string[] = [
-  '/',
+const HOMES: readonly string[] = [...new Set([HOME, os.userInfo().homedir])];
+
+const HOME_SUBTREES = [
+  'Documents',
+  'Desktop',
+  'Downloads',
+  'Pictures',
+  'Music',
+  'Movies',
+  '.ssh',
+  '.gnupg',
+  'Library/Keychains',
+  'Library/Preferences',
+];
+
+// Nothing under these is ever a deletion target.
+const PROTECTED_SUBTREES: readonly string[] = [
   '/System',
-  '/Library',
   '/Library/System',
   '/usr',
   '/bin',
   '/sbin',
-  '/private',
   '/private/var/db',
   '/private/var/protected',
-  HOME,
-  path.join(HOME, 'Documents'),
-  path.join(HOME, 'Desktop'),
-  path.join(HOME, 'Downloads'),
-  path.join(HOME, 'Pictures'),
-  path.join(HOME, 'Music'),
-  path.join(HOME, 'Movies'),
-  path.join(HOME, '.ssh'),
-  path.join(HOME, '.gnupg'),
-  path.join(HOME, 'Library'),
-  path.join(HOME, 'Library', 'Application Support'),
-  path.join(HOME, 'Library', 'Containers'),
-  path.join(HOME, 'Library', 'Group Containers'),
-  path.join(HOME, 'Library', 'Caches'),
-  path.join(HOME, 'Library', 'Preferences'),
-  path.join(HOME, 'Library', 'Keychains'),
+  '/var/db',
+  '/var/protected',
+  ...HOMES.flatMap((home) => HOME_SUBTREES.map((sub) => path.join(home, sub))),
 ];
+
+// Container directories: the directory itself is protected, its children are scanner targets.
+const PROTECTED_EXACT: readonly string[] = [
+  '/',
+  '/Library',
+  '/private',
+  ...HOMES.flatMap((home) => [
+    home,
+    path.join(home, 'Library'),
+    path.join(home, 'Library', 'Application Support'),
+    path.join(home, 'Library', 'Containers'),
+    path.join(home, 'Library', 'Group Containers'),
+    path.join(home, 'Library', 'Caches'),
+  ]),
+];
+
+export const PROTECTED_PATHS: readonly string[] = [...PROTECTED_EXACT, ...PROTECTED_SUBTREES];
+
+const OTHER_USER_SUBTREE = new RegExp(
+  `^/Users/[^/]+/(${HOME_SUBTREES.map((sub) => sub.replace('.', '\\.')).join('|')})(/|$)`,
+  'i',
+);
 
 export function expandHome(p: string): string {
   if (p === '~') return HOME;
@@ -38,13 +60,18 @@ export function expandHome(p: string): string {
   return p;
 }
 
+function fold(p: string): string {
+  return path.resolve(expandHome(p)).toLowerCase();
+}
+
 export function isProtectedPath(target: string): boolean {
-  const resolved = path.resolve(expandHome(target));
-  for (const protectedPath of PROTECTED_PATHS) {
-    const p = path.resolve(protectedPath);
-    if (resolved === p) return true;
-  }
-  return false;
+  const resolved = fold(target);
+  if (PROTECTED_EXACT.some((p) => fold(p) === resolved)) return true;
+  if (OTHER_USER_SUBTREE.test(resolved)) return true;
+  return PROTECTED_SUBTREES.some((p) => {
+    const root = fold(p);
+    return resolved === root || resolved.startsWith(`${root}/`);
+  });
 }
 
 function isAncestorOf(ancestor: string, descendant: string): boolean {
@@ -62,7 +89,7 @@ export function assertSafeToDelete(target: string): void {
   }
   for (const protectedPath of PROTECTED_PATHS) {
     const p = path.resolve(protectedPath);
-    if (isAncestorOf(resolved, p)) {
+    if (isAncestorOf(fold(resolved), fold(p))) {
       throw new Error(`Refusing to delete ancestor of protected path: ${resolved} (contains ${p})`);
     }
   }

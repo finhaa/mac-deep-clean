@@ -72,18 +72,19 @@ export async function safeRemove(target: string): Promise<void> {
 
 /**
  * Remove contents of a directory but keep the directory itself.
- * Used for caches where we don't want to delete the parent dir.
+ * Returns one message per child that could not be removed.
  */
-export async function clearDir(dir: string): Promise<void> {
-  if (!(await isDirectory(dir))) return;
-  const entries = await listDir(dir);
-  for (const name of entries) {
+export async function clearDir(dir: string): Promise<string[]> {
+  if (!(await isDirectory(dir))) return [];
+  const errors: string[] = [];
+  for (const name of await listDir(dir)) {
     const child = path.join(dir, name);
     try {
       assertSafeToDelete(child);
       await fs.rm(child, { recursive: true, force: true });
-    } catch {
-      // skip
+    } catch (err) {
+      errors.push(`${child}: ${(err as Error).message}`);
     }
   }
+  return errors;
 }

@@ -34,12 +34,13 @@ export class TrashScanner extends BaseScanner {
     let freed = 0;
     const errors: string[] = [];
     for (const r of results) {
-      try {
-        if (!dryRun) await clearDir(r.path);
+      if (dryRun) {
         freed += r.size;
-      } catch (err) {
-        errors.push(`${r.path}: ${(err as Error).message}`);
+        continue;
       }
+      const before = await getSize(r.path);
+      errors.push(...(await clearDir(r.path)));
+      freed += Math.max(0, before - (await getSize(r.path)));
     }
     return { freed, errors };
   }

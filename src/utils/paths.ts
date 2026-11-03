@@ -79,6 +79,13 @@ function isAncestorOf(ancestor: string, descendant: string): boolean {
   return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
+export function findProtectedDescendant(target: string): string | undefined {
+  const resolved = path.resolve(expandHome(target));
+  return PROTECTED_PATHS.map((p) => path.resolve(p)).find((p) =>
+    isAncestorOf(fold(resolved), fold(p)),
+  );
+}
+
 export function assertSafeToDelete(target: string): void {
   const resolved = path.resolve(expandHome(target));
   if (isProtectedPath(resolved)) {
@@ -87,10 +94,10 @@ export function assertSafeToDelete(target: string): void {
   if (resolved === '/' || resolved.split(path.sep).filter(Boolean).length < 2) {
     throw new Error(`Refusing to delete near-root path: ${resolved}`);
   }
-  for (const protectedPath of PROTECTED_PATHS) {
-    const p = path.resolve(protectedPath);
-    if (isAncestorOf(fold(resolved), fold(p))) {
-      throw new Error(`Refusing to delete ancestor of protected path: ${resolved} (contains ${p})`);
-    }
+  const contained = findProtectedDescendant(resolved);
+  if (contained) {
+    throw new Error(
+      `Refusing to delete ancestor of protected path: ${resolved} (contains ${contained})`,
+    );
   }
 }

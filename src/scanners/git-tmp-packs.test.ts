@@ -82,6 +82,14 @@ describe('GitTmpPacksScanner.scan', () => {
     expect(await scanner().scan()).toEqual([]);
   });
 
+  it('finds a leak in a repo whose parent directory name contains a newline', async () => {
+    const stale = await writeAged(packFile('team\nrepo', 'tmp_pack_nl'), 30);
+
+    const results = await scanner().scan();
+
+    expect(results.map((r) => r.path)).toEqual([stale]);
+  });
+
   it('finds the leak in several repos and orders the largest first', async () => {
     await writeAged(packFile('a', 'tmp_pack_one'), 60, Buffer.alloc(11 * 1024 * 1024, 1));
     await writeAged(packFile('b', 'tmp_pack_two'), 60, Buffer.alloc(13 * 1024 * 1024, 1));

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types.js';
-import { run } from '../utils/exec.js';
+import { findDirsNamed } from '../utils/find.js';
 import { getSize, isDirectory, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
@@ -61,20 +61,10 @@ export class ProjectArtifactsScanner extends BaseScanner {
 
     const protectedDirs = this.protectedDirs ?? (await defaultProtectedDirs());
     const skip = [...this.excludeRoots, ...protectedDirs];
-    const namePattern = ARTIFACT_DIRS.map((n) => `-name "${n}"`).join(' -o ');
     const results: ScanResult[] = [];
 
     for (const root of roots) {
-      const escaped = root.replace(/(["\\$`])/g, '\\$1');
-      const cmd =
-        `find "${escaped}" -maxdepth ${MAX_DEPTH} -type d ` +
-        `\\( ${namePattern} \\) -prune -print 2>/dev/null`;
-      const { stdout, code } = await run(cmd, { timeout: 60_000 });
-      if (code !== 0 && !stdout.trim()) continue;
-
-      for (const line of stdout.split('\n')) {
-        const target = line.trim();
-        if (!target) continue;
+      for (const target of await findDirsNamed(root, ARTIFACT_DIRS, MAX_DEPTH)) {
         if (await isInsideLinkedWorktree(target, root)) continue;
         if (await isExcluded(target, skip)) continue;
         if (!(await looksLikeBuildArtifact(target))) continue;

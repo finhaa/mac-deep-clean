@@ -5,23 +5,33 @@ import { getSize, pathExists } from '../utils/fs.js';
 import { assertSafeToDelete } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
+export interface TempCandidate {
+  path: string;
+  label: string;
+  description: string;
+}
+
+// /tmp is a one-segment symlink that assertSafeToDelete always refuses, so it is never offered.
+export function tempCandidates(tmpDir: string): TempCandidate[] {
+  return [
+    {
+      path: tmpDir,
+      label: `TMPDIR (${tmpDir})`,
+      description:
+        'Deletes user-owned files older than 1 day; does not check whether a file is open',
+    },
+  ];
+}
+
 export class TempFilesScanner extends BaseScanner {
   readonly name = 'Temp Files';
   readonly category = 'temp-files';
-  readonly description = '/tmp and per-user temp dir (user-owned, >1 day old)';
+  readonly description = 'Per-user temp dir (user-owned files older than 1 day)';
   readonly risk = 'moderate' as const;
 
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
-    const tmpDir = os.tmpdir();
-    const candidates = [
-      { path: '/tmp', label: '/tmp' },
-      { path: tmpDir, label: `TMPDIR (${tmpDir})` },
-    ];
-    const seen = new Set<string>();
-    for (const c of candidates) {
-      if (seen.has(c.path)) continue;
-      seen.add(c.path);
+    for (const c of tempCandidates(os.tmpdir())) {
       if (!(await pathExists(c.path))) continue;
       const size = await getSize(c.path);
       if (size < 10 * 1024 * 1024) continue;
@@ -31,7 +41,7 @@ export class TempFilesScanner extends BaseScanner {
         label: c.label,
         category: this.category,
         risk: this.risk,
-        description: 'Cleans user-owned files older than 1 day (leaves files in use)',
+        description: c.description,
       });
     }
     return results;
@@ -48,6 +58,7 @@ export class TempFilesScanner extends BaseScanner {
           freed += r.size;
           continue;
         }
+        const before = await getSize(r.path);
         const escaped = r.path.replace(/(["\\$`])/g, '\\$1');
         const filter = user ? `-user "${user}"` : '';
         const { code, stderr } = await run(
@@ -58,7 +69,7 @@ export class TempFilesScanner extends BaseScanner {
           errors.push(`${r.path}: ${stderr.trim() || `find exited ${code}`}`);
           continue;
         }
-        freed += r.size;
+        freed += Math.max(0, before - (await getSize(r.path)));
       } catch (err) {
         errors.push(`${r.path}: ${(err as Error).message}`);
       }

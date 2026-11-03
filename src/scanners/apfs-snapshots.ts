@@ -2,6 +2,9 @@ import type { CleanResult, ScanResult } from '../types.js';
 import { commandExists, run } from '../utils/exec.js';
 import { BaseScanner } from './base-scanner.js';
 
+// The root volume is the sealed, read-only system snapshot; user data lives on the Data volume.
+const VOLUME = '/System/Volumes/Data';
+
 export class ApfsSnapshotsScanner extends BaseScanner {
   readonly name = 'APFS Snapshots';
   readonly category = 'apfs-snapshots';
@@ -10,7 +13,9 @@ export class ApfsSnapshotsScanner extends BaseScanner {
 
   async scan(): Promise<ScanResult[]> {
     if (!(await commandExists('diskutil'))) return [];
-    const { stdout, code } = await run('diskutil apfs listSnapshots /', { timeout: 10_000 });
+    const { stdout, code } = await run(`diskutil apfs listSnapshots ${VOLUME}`, {
+      timeout: 10_000,
+    });
     if (code !== 0) return [];
 
     const uuids = this.parseUuids(stdout);
@@ -20,10 +25,10 @@ export class ApfsSnapshotsScanner extends BaseScanner {
       {
         path: 'apfs:snapshots',
         size: 0,
-        label: `${uuids.length} APFS snapshot(s) on /`,
+        label: `${uuids.length} APFS snapshot(s) on ${VOLUME}`,
         category: this.category,
         risk: this.risk,
-        description: 'sudo diskutil apfs deleteSnapshot / -uuid <uuid> (requires sudo)',
+        description: `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid <uuid> (requires sudo)`,
       },
     ];
   }
@@ -45,7 +50,7 @@ export class ApfsSnapshotsScanner extends BaseScanner {
         freed += r.size;
         continue;
       }
-      const { stdout, code, stderr } = await run('diskutil apfs listSnapshots /', {
+      const { stdout, code, stderr } = await run(`diskutil apfs listSnapshots ${VOLUME}`, {
         timeout: 10_000,
       });
       if (code !== 0) {
@@ -55,7 +60,7 @@ export class ApfsSnapshotsScanner extends BaseScanner {
       const uuids = this.parseUuids(stdout);
       for (const uuid of uuids) {
         const { code: delCode, stderr: delErr } = await run(
-          `sudo diskutil apfs deleteSnapshot / -uuid ${uuid}`,
+          `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${uuid}`,
           { timeout: 60_000 },
         );
         if (delCode !== 0) errors.push(`delete ${uuid}: ${delErr}`);

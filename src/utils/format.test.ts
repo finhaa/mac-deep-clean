@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes } from './format.js';
+import { colorRisk, colorSize, formatBytes, truncate } from './format.js';
 
 describe('formatBytes', () => {
   it('handles zero', () => {
@@ -20,5 +20,23 @@ describe('formatBytes', () => {
 
   it('uses no decimals for values ≥ 100', () => {
     expect(formatBytes(150 * 1024 ** 3)).toBe('150 GB');
+  });
+});
+
+describe('truncate', () => {
+  it('keeps a string that fits and cuts one that does not, ending in an ellipsis', () => {
+    expect(truncate('abc', 3)).toBe('abc');
+    expect(truncate('abcd', 3)).toBe('ab…');
+  });
+});
+
+describe('colorRisk and colorSize', () => {
+  it('always keep the plain text', () => {
+    expect(colorRisk('safe')).toContain('safe');
+    expect(colorRisk('moderate')).toContain('moderate');
+    expect(colorRisk('risky')).toContain('risky');
+    expect(colorSize(512)).toContain('512 B');
+    expect(colorSize(2 * 1024 ** 3)).toContain('2.0 GB');
+    expect(colorSize(20 * 1024 ** 3)).toContain('20.0 GB');
   });
 });

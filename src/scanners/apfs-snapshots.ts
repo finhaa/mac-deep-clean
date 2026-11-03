@@ -12,6 +12,7 @@ export interface Snapshot {
 
 const UUID_LINE = /^[\s|+-]*([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})\s*$/i;
 const NAME_LINE = /^\s*Name:\s*(.+?)\s*$/;
+const ITEM_PATH = /^apfs:snapshot:([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})$/i;
 
 // Never offered: the OS update snapshot backs the sealed system volume, and Time Machine local
 // snapshots belong to the time-machine scanner.
@@ -39,6 +40,11 @@ function deletable(output: string): Snapshot[] {
   );
 }
 
+// A snapshot name comes from the disk and is shown to the user: no control characters.
+function printable(name: string): string {
+  return [...name].map((c) => (c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 ? '?' : c)).join('');
+}
+
 export class ApfsSnapshotsScanner extends BaseScanner {
   readonly name = 'APFS Snapshots';
   readonly category = 'apfs-snapshots';
@@ -52,25 +58,26 @@ export class ApfsSnapshotsScanner extends BaseScanner {
     });
     if (code !== 0) return [];
 
-    const snapshots = deletable(stdout);
-    if (snapshots.length === 0) return [];
-
-    return [
-      {
-        path: 'apfs:snapshots',
-        size: 0,
-        label: `${snapshots.length} APFS snapshot(s) on ${VOLUME}`,
-        category: this.category,
-        risk: this.risk,
-        description: `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid <uuid> (requires sudo)`,
-      },
-    ];
+    return deletable(stdout).map((s) => ({
+      path: `apfs:snapshot:${s.uuid}`,
+      size: 0,
+      virtual: true,
+      label: `APFS snapshot "${printable(s.name)}" on ${VOLUME}`,
+      category: this.category,
+      risk: 'risky' as const,
+      description: `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${s.uuid} (requires sudo)`,
+    }));
   }
 
   override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
     let freed = 0;
     const errors: string[] = [];
     for (const r of results) {
+      const uuid = r.path.match(ITEM_PATH)?.[1];
+      if (!uuid) {
+        errors.push(`${r.path}: not an APFS snapshot`);
+        continue;
+      }
       if (dryRun) {
         freed += r.size;
         continue;
@@ -82,12 +89,18 @@ export class ApfsSnapshotsScanner extends BaseScanner {
         errors.push(`list snapshots: ${stderr}`);
         continue;
       }
-      for (const { uuid } of deletable(stdout)) {
-        const { code: delCode, stderr: delErr } = await run(
-          `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${uuid}`,
-          { timeout: 60_000 },
-        );
-        if (delCode !== 0) errors.push(`delete ${uuid}: ${delErr}`);
+      const snapshot = deletable(stdout).find((s) => s.uuid.toLowerCase() === uuid.toLowerCase());
+      if (!snapshot) {
+        errors.push(`${uuid}: no longer a snapshot this tool may delete`);
+        continue;
+      }
+      const { code: delCode, stderr: delErr } = await run(
+        `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${snapshot.uuid}`,
+        { timeout: 60_000 },
+      );
+      if (delCode !== 0) {
+        errors.push(`delete ${snapshot.uuid}: ${delErr}`);
+        continue;
       }
       freed += r.size;
     }

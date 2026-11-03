@@ -55,7 +55,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
       if (item.description) console.log(`    ${chalk.grey(item.description)}`);
     }
   }
-  const nonEmpty = reports.filter((r) => r.results.length > 0 && r.totalSize > 0);
+  const nonEmpty = reports.filter((r) => r.results.some((i) => i.size > 0 || i.virtual));
   if (nonEmpty.length === 0) {
     console.log(chalk.green('\n✓ Nothing to clean.\n'));
     return;

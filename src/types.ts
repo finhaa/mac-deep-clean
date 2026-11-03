@@ -14,6 +14,11 @@ export interface ScanResult {
    * Defaults to true.
    */
   cleanable?: boolean;
+  /**
+   * True when the item has no measurable size (a snapshot), so a size of 0
+   * must not hide it from the cleanup list.
+   */
+  virtual?: boolean;
 }
 
 export interface ScannerReport {

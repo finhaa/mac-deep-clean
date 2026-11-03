@@ -47,6 +47,7 @@ program
   .option('--dry-run', 'Preview only — no files deleted')
   .option('-y, --yes', 'Skip confirmation')
   .option('-p, --path <dir...>', 'Override search roots (default: ~/code, ~/Projects, ~/dev, …)')
+  .option('-x, --exclude <dir...>', 'Never touch these dirs or anything inside them')
   .action(async (opts) => {
     await purgeCommand(opts);
   });

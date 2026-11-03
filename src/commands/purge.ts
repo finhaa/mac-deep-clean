@@ -12,6 +12,7 @@ interface PurgeOptions {
   dryRun?: boolean;
   yes?: boolean;
   path?: string[];
+  exclude?: string[];
 }
 
 export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
@@ -31,6 +32,10 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
       resolved.push(expanded);
     }
     scanner.searchRoots = resolved;
+  }
+
+  if (options.exclude && options.exclude.length > 0) {
+    scanner.excludeRoots = options.exclude.map((p) => path.resolve(expandHome(p)));
   }
 
   const spinner = ora('Walking project roots…').start();

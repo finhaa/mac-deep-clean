@@ -38,9 +38,9 @@ export class TrashScanner extends BaseScanner {
         freed += r.size;
         continue;
       }
-      const before = await getSize(r.path);
-      errors.push(...(await clearDir(r.path)));
-      freed += Math.max(0, before - (await getSize(r.path)));
+      const cleared = await clearDir(r.path);
+      freed += cleared.freed;
+      errors.push(...cleared.errors);
     }
     return { freed, errors };
   }

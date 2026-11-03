@@ -71,20 +71,38 @@ export async function safeRemove(target: string): Promise<void> {
 }
 
 /**
- * Remove contents of a directory but keep the directory itself.
- * Returns one message per child that could not be removed.
+ * Remove the contents of a directory but keep the directory itself and any child named in `keep`.
+ * `freed` counts only children that are really gone; every other child adds a message to `errors`.
  */
-export async function clearDir(dir: string): Promise<string[]> {
-  if (!(await isDirectory(dir))) return [];
+export async function clearDir(
+  dir: string,
+  keep: readonly string[] = [],
+): Promise<{ freed: number; errors: string[] }> {
+  let freed = 0;
   const errors: string[] = [];
+  if (!(await isDirectory(dir))) return { freed, errors };
   for (const name of await listDir(dir)) {
+    if (keep.includes(name)) continue;
     const child = path.join(dir, name);
+    const size = await getSize(child);
     try {
       assertSafeToDelete(child);
       await fs.rm(child, { recursive: true, force: true });
     } catch (err) {
       errors.push(`${child}: ${(err as Error).message}`);
+      continue;
     }
+    if (await pathExists(child)) errors.push(`${child}: still exists after removal`);
+    else freed += size;
   }
-  return errors;
+  return { freed, errors };
+}
+
+/** Bytes under `dir`, leaving out the children named in `keep`. */
+export async function sizeExcluding(dir: string, keep: readonly string[]): Promise<number> {
+  let total = 0;
+  for (const name of await listDir(dir)) {
+    if (!keep.includes(name)) total += await getSize(path.join(dir, name));
+  }
+  return total;
 }

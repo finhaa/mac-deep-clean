@@ -20,7 +20,7 @@ describe('clearDir', () => {
     await fsp.writeFile(path.join(root, 'a'), 'x');
     await fsp.mkdir(path.join(root, 'b'));
     await fsp.writeFile(path.join(root, 'b', 'c'), 'x');
-    expect(await clearDir(root)).toEqual([]);
+    expect((await clearDir(root)).errors).toEqual([]);
     expect(await fsp.readdir(root)).toEqual([]);
   });
 
@@ -32,10 +32,29 @@ describe('clearDir', () => {
       if (String(target).endsWith('locked')) throw new Error('EACCES: permission denied');
       return realRm(target, options);
     });
-    const errors = await clearDir(root);
+    const { errors } = await clearDir(root);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('locked');
     expect(errors[0]).toContain('EACCES');
     expect(await fsp.readdir(root)).toEqual(['locked']);
+  });
+
+  it('keeps the named children and reports the bytes of the ones it removed', async () => {
+    await fsp.writeFile(path.join(root, 'keep'), Buffer.alloc(300 * 1024));
+    await fsp.writeFile(path.join(root, 'drop'), Buffer.alloc(500 * 1024));
+    const { freed, errors } = await clearDir(root, ['keep']);
+    expect(errors).toEqual([]);
+    expect(freed).toBeGreaterThan(400 * 1024);
+    expect(freed).toBeLessThan(600 * 1024);
+    expect(await fsp.readdir(root)).toEqual(['keep']);
+  });
+
+  it('does not count a child as freed when removal reports success but it is still there', async () => {
+    await fsp.writeFile(path.join(root, 'stuck'), Buffer.alloc(300 * 1024));
+    vi.spyOn(fsp, 'rm').mockImplementation(async () => {});
+    const { freed, errors } = await clearDir(root);
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('still exists');
   });
 });

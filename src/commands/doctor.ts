@@ -6,6 +6,7 @@ import { getAllScanners } from '../scanners/index.js';
 import { run } from '../utils/exec.js';
 import { colorRisk, colorSize, formatBytes } from '../utils/format.js';
 import { getSize, pathExists } from '../utils/fs.js';
+import { partitionCleanable } from '../utils/partition.js';
 import { HOME } from '../utils/paths.js';
 
 interface DiskInfo {
@@ -79,7 +80,7 @@ export async function doctorCommand(): Promise<void> {
   }
 
   console.log(chalk.bold.cyan('\nRunning scanners…\n'));
-  const reports = await runScanners(getAllScanners());
+  const { reports, infoItems } = partitionCleanable(await runScanners(getAllScanners()));
   const sorted = [...reports].sort((a, b) => b.totalSize - a.totalSize);
 
   console.log(chalk.bold('\nRecommendations:'));
@@ -93,6 +94,14 @@ export async function doctorCommand(): Promise<void> {
     );
   }
   if (!hasRec) console.log(chalk.green('  ✓ Nothing significant to recommend.'));
+
+  if (infoItems.length > 0) {
+    console.log(`\n${chalk.grey('ℹ Not cleanable by this tool:')}`);
+    for (const item of infoItems) {
+      console.log(`  ${chalk.grey('•')} ${item.label} ${colorSize(item.size)}`);
+      if (item.description) console.log(`    ${chalk.grey(item.description)}`);
+    }
+  }
 
   const total = reports.reduce((s, r) => s + r.totalSize, 0);
   console.log(`\n${chalk.bold('Total potential:')} ${colorSize(total)}\n`);

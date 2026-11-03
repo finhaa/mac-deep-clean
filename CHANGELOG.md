@@ -67,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `rmdir /Library/Logs` and `~/Library/Logs` permission errors) and Logs no
   longer counts or removes the folders that Diagnostic Reports and JetBrains
   report on their own, so no space is counted or deleted twice.
+- `doctor` no longer counts the Docker Desktop VM disk (or any item this tool
+  cannot clean) in its recommendations and total; it lists those separately.
 
 ### Safety
 

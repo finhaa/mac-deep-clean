@@ -5,6 +5,40 @@ import { BaseScanner } from './base-scanner.js';
 // The root volume is the sealed, read-only system snapshot; user data lives on the Data volume.
 const VOLUME = '/System/Volumes/Data';
 
+export interface Snapshot {
+  uuid: string;
+  name: string;
+}
+
+const UUID_LINE = /^[\s|+-]*([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})\s*$/i;
+const NAME_LINE = /^\s*Name:\s*(.+?)\s*$/;
+
+// Never offered: the OS update snapshot backs the sealed system volume, and Time Machine local
+// snapshots belong to the time-machine scanner.
+const PROTECTED_NAME_PREFIXES = ['com.apple.os.update-', 'com.apple.TimeMachine.'];
+
+export function parseSnapshots(output: string): Snapshot[] {
+  const snapshots: Snapshot[] = [];
+  let current: Snapshot | undefined;
+  for (const line of output.split('\n')) {
+    const uuid = line.match(UUID_LINE)?.[1];
+    if (uuid) {
+      current = { uuid, name: '' };
+      snapshots.push(current);
+      continue;
+    }
+    const name = line.match(NAME_LINE)?.[1];
+    if (name && current && !current.name) current.name = name;
+  }
+  return snapshots;
+}
+
+function deletable(output: string): Snapshot[] {
+  return parseSnapshots(output).filter(
+    (s) => s.name !== '' && !PROTECTED_NAME_PREFIXES.some((prefix) => s.name.startsWith(prefix)),
+  );
+}
+
 export class ApfsSnapshotsScanner extends BaseScanner {
   readonly name = 'APFS Snapshots';
   readonly category = 'apfs-snapshots';
@@ -18,28 +52,19 @@ export class ApfsSnapshotsScanner extends BaseScanner {
     });
     if (code !== 0) return [];
 
-    const uuids = this.parseUuids(stdout);
-    if (uuids.length === 0) return [];
+    const snapshots = deletable(stdout);
+    if (snapshots.length === 0) return [];
 
     return [
       {
         path: 'apfs:snapshots',
         size: 0,
-        label: `${uuids.length} APFS snapshot(s) on ${VOLUME}`,
+        label: `${snapshots.length} APFS snapshot(s) on ${VOLUME}`,
         category: this.category,
         risk: this.risk,
         description: `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid <uuid> (requires sudo)`,
       },
     ];
-  }
-
-  private parseUuids(output: string): string[] {
-    const uuids: string[] = [];
-    for (const line of output.split('\n')) {
-      const match = line.match(/UUID:\s*([A-F0-9-]{36})/i);
-      if (match) uuids.push(match[1]!);
-    }
-    return uuids;
   }
 
   override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
@@ -57,8 +82,7 @@ export class ApfsSnapshotsScanner extends BaseScanner {
         errors.push(`list snapshots: ${stderr}`);
         continue;
       }
-      const uuids = this.parseUuids(stdout);
-      for (const uuid of uuids) {
+      for (const { uuid } of deletable(stdout)) {
         const { code: delCode, stderr: delErr } = await run(
           `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${uuid}`,
           { timeout: 60_000 },

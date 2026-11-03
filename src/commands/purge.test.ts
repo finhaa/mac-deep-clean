@@ -34,6 +34,7 @@ vi.mock('../scanners/project-artifacts.js', async (importOriginal) => {
   return { ...actual, ProjectArtifactsScanner: FakeScanner };
 });
 
+import { checkbox, confirm } from '@inquirer/prompts';
 import type { ScanResult } from '../types.js';
 import { purgeCommand } from './purge.js';
 
@@ -123,4 +124,61 @@ describe('purgeCommand --path', () => {
       expect(removed()).toEqual([]);
     },
   );
+});
+
+describe('purgeCommand interactive', () => {
+  beforeEach(() => {
+    vi.mocked(checkbox).mockReset();
+    vi.mocked(confirm).mockReset();
+    vi.mocked(checkbox).mockResolvedValue([0, 1] as never);
+    vi.mocked(confirm).mockResolvedValue(true as never);
+  });
+
+  it('pre-ticks build artifacts but not virtualenvs', async () => {
+    await purgeCommand({});
+    const { choices } = vi.mocked(checkbox).mock.calls[0]?.[0] as unknown as {
+      choices: { checked: boolean }[];
+    };
+    expect(choices.map((c) => c.checked)).toEqual([true, false]);
+  });
+
+  it('deletes the picked dirs once the user confirms', async () => {
+    await purgeCommand({});
+    expect(removed()).toEqual([NODE_MODULES, VENV]);
+  });
+
+  it('defaults the confirmation to no', async () => {
+    await purgeCommand({});
+    expect(vi.mocked(confirm)).toHaveBeenCalledWith(expect.objectContaining({ default: false }));
+  });
+
+  it('deletes nothing when the user declines', async () => {
+    vi.mocked(confirm).mockResolvedValue(false as never);
+    await purgeCommand({});
+    expect(rm()).not.toHaveBeenCalled();
+  });
+
+  it('does not ask for confirmation on a dry run and deletes nothing', async () => {
+    await purgeCommand({ dryRun: true });
+    expect(vi.mocked(confirm)).not.toHaveBeenCalled();
+    expect(rm()).not.toHaveBeenCalled();
+  });
+
+  it('stops when nothing is picked', async () => {
+    vi.mocked(checkbox).mockResolvedValue([] as never);
+    await purgeCommand({});
+    expect(vi.mocked(confirm)).not.toHaveBeenCalled();
+    expect(rm()).not.toHaveBeenCalled();
+  });
+
+  it('reports a dir it could not delete and goes on with the rest', async () => {
+    rm().mockRejectedValueOnce(new Error('EACCES'));
+    await purgeCommand({});
+    expect(removed()).toEqual([NODE_MODULES, VENV]);
+    const out = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+    expect(out).toContain('EACCES');
+  });
 });

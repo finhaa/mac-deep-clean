@@ -2,7 +2,15 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearDir } from './fs.js';
+import {
+  clearDir,
+  getSize,
+  isDirectory,
+  listDir,
+  pathExists,
+  safeRemove,
+  sizeExcluding,
+} from './fs.js';
 
 let root: string;
 
@@ -56,5 +64,67 @@ describe('clearDir', () => {
     expect(freed).toBe(0);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('still exists');
+  });
+});
+
+describe('pathExists, isDirectory and listDir', () => {
+  it('tell files, directories, symlinks and missing paths apart', async () => {
+    await fsp.writeFile(path.join(root, 'file'), 'x');
+    await fsp.mkdir(path.join(root, 'dir'));
+    await fsp.symlink(path.join(root, 'dir'), path.join(root, 'link'));
+    expect(await pathExists(path.join(root, 'file'))).toBe(true);
+    expect(await pathExists(path.join(root, 'link'))).toBe(true);
+    expect(await pathExists(path.join(root, 'missing'))).toBe(false);
+    expect(await isDirectory(path.join(root, 'dir'))).toBe(true);
+    expect(await isDirectory(path.join(root, 'link'))).toBe(false);
+    expect(await isDirectory(path.join(root, 'file'))).toBe(false);
+    expect((await listDir(root)).sort()).toEqual(['dir', 'file', 'link']);
+    expect(await listDir(path.join(root, 'missing'))).toEqual([]);
+  });
+});
+
+describe('getSize', () => {
+  it('is the byte size of a file, 0 for a symlink or a missing path, and the disk usage of a directory', async () => {
+    await fsp.writeFile(path.join(root, 'file'), Buffer.alloc(1234));
+    await fsp.mkdir(path.join(root, 'dir'));
+    await fsp.writeFile(path.join(root, 'dir', 'big'), Buffer.alloc(300 * 1024));
+    await fsp.symlink(path.join(root, 'dir'), path.join(root, 'link'));
+    expect(await getSize(path.join(root, 'file'))).toBe(1234);
+    expect(await getSize(path.join(root, 'link'))).toBe(0);
+    expect(await getSize(path.join(root, 'missing'))).toBe(0);
+    expect(await getSize(path.join(root, 'dir'))).toBeGreaterThanOrEqual(300 * 1024);
+  });
+
+  it('handles a path with quotes, dollar signs and backticks without running anything', async () => {
+    const odd = path.join(root, 'a"b$HOME`id`');
+    await fsp.mkdir(odd);
+    await fsp.writeFile(path.join(odd, 'f'), Buffer.alloc(8 * 1024));
+    expect(await getSize(odd)).toBeGreaterThanOrEqual(8 * 1024);
+  });
+});
+
+describe('safeRemove', () => {
+  it('removes a folder and ignores a missing path', async () => {
+    const dir = path.join(root, 'gone');
+    await fsp.mkdir(dir);
+    await fsp.writeFile(path.join(dir, 'f'), 'x');
+    await safeRemove(dir);
+    expect(await pathExists(dir)).toBe(false);
+    await expect(safeRemove(path.join(root, 'never-existed'))).resolves.toBeUndefined();
+  });
+
+  it('refuses a protected path before touching anything', async () => {
+    await expect(safeRemove(os.homedir())).rejects.toThrow(/Refusing to delete/);
+    await expect(safeRemove('/')).rejects.toThrow(/Refusing to delete/);
+  });
+});
+
+describe('sizeExcluding', () => {
+  it('adds up the children except the ones to keep', async () => {
+    await fsp.writeFile(path.join(root, 'a'), Buffer.alloc(100));
+    await fsp.writeFile(path.join(root, 'b'), Buffer.alloc(200));
+    await fsp.writeFile(path.join(root, 'c'), Buffer.alloc(400));
+    expect(await sizeExcluding(root, ['c'])).toBe(300);
+    expect(await sizeExcluding(root, [])).toBe(700);
   });
 });

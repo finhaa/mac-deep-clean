@@ -22,7 +22,7 @@ export async function pathExists(p: string): Promise<boolean> {
 export async function isDirectory(p: string): Promise<boolean> {
   try {
     const st = await fs.lstat(p);
-    return st.isDirectory() && !st.isSymbolicLink();
+    return st.isDirectory();
   } catch {
     return false;
   }

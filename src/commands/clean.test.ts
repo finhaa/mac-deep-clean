@@ -7,6 +7,7 @@ vi.mock('ora', () => {
 vi.mock('@inquirer/prompts', () => ({ checkbox: vi.fn(), confirm: vi.fn() }));
 vi.mock('../scanners/index.js', () => ({ getAllScanners: vi.fn() }));
 
+import { checkbox, confirm } from '@inquirer/prompts';
 import { getAllScanners } from '../scanners/index.js';
 import type { Risk, ScanResult } from '../types.js';
 import { cleanCommand } from './clean.js';
@@ -145,5 +146,119 @@ describe('cleanCommand with items that have no measurable size', () => {
     await cleanCommand({ yes: true });
 
     expect(empty.clean).not.toHaveBeenCalled();
+  });
+});
+
+const logged = () =>
+  vi
+    .mocked(console.log)
+    .mock.calls.map((call) => call.join(' '))
+    .join('\n');
+
+describe('cleanCommand interactive', () => {
+  beforeEach(() => {
+    vi.mocked(checkbox).mockReset();
+    vi.mocked(confirm).mockReset();
+    vi.mocked(checkbox).mockResolvedValue([0] as never);
+    vi.mocked(confirm).mockResolvedValue(true as never);
+  });
+
+  const choicesOf = (call: number) =>
+    (vi.mocked(checkbox).mock.calls[call]?.[0] as unknown as { choices: { checked: boolean }[] })
+      .choices;
+
+  it('asks once per report and pre-ticks only the safe items', async () => {
+    await cleanCommand({ risky: true });
+    expect(vi.mocked(checkbox)).toHaveBeenCalledTimes(4);
+    expect(choicesOf(0).map((c) => c.checked)).toEqual([true]);
+    expect(choicesOf(1).map((c) => c.checked)).toEqual([false]);
+    expect(choicesOf(3).map((c) => c.checked)).toEqual([true, false]);
+  });
+
+  it('does not offer risky items unless asked, not even from a safe scanner', async () => {
+    await cleanCommand({});
+    expect(vi.mocked(checkbox)).toHaveBeenCalledTimes(3);
+    expect(choicesOf(2)).toHaveLength(1);
+  });
+
+  it('cleans what was picked once the user confirms', async () => {
+    await cleanCommand({});
+    expect(vi.mocked(confirm)).toHaveBeenCalledTimes(1);
+    expect(cleanedLabels(safe)).toEqual(['safe-cat-item']);
+    expect(cleanedLabels(moderate)).toEqual(['moderate-cat-item']);
+    expect(cleanedLabels(mixed)).toEqual(['mixed-safe']);
+  });
+
+  it('defaults the confirmation to no', async () => {
+    await cleanCommand({});
+    expect(vi.mocked(confirm)).toHaveBeenCalledWith(expect.objectContaining({ default: false }));
+  });
+
+  it('cleans nothing when the user declines the confirmation', async () => {
+    vi.mocked(confirm).mockResolvedValue(false as never);
+    await cleanCommand({});
+    for (const s of [safe, moderate, risky, mixed]) expect(s.clean).not.toHaveBeenCalled();
+    expect(logged()).toContain('Cancelled');
+  });
+
+  it('does not ask for confirmation on a dry run', async () => {
+    await cleanCommand({ dryRun: true });
+    expect(vi.mocked(confirm)).not.toHaveBeenCalled();
+    expect(safe.clean.mock.calls[0]?.[1]).toBe(true);
+  });
+
+  it('stops without asking to confirm when nothing was picked', async () => {
+    vi.mocked(checkbox).mockResolvedValue([] as never);
+    await cleanCommand({});
+    expect(vi.mocked(confirm)).not.toHaveBeenCalled();
+    for (const s of [safe, moderate, risky, mixed]) expect(s.clean).not.toHaveBeenCalled();
+    expect(logged()).toContain('Nothing selected');
+  });
+});
+
+describe('cleanCommand reporting', () => {
+  it('lists items this tool cannot clean and never tries to clean them', async () => {
+    const vm: ScanResult = { ...item('vm-cat', 'safe', 'VM disk'), cleanable: false };
+    const vmScanner = fakeScanner('vm-cat', 'safe', [vm]);
+    vi.mocked(getAllScanners).mockReturnValue([vmScanner, safe] as never);
+    await cleanCommand({ yes: true });
+    expect(logged()).toContain('Not cleanable by this tool');
+    expect(logged()).toContain('VM disk');
+    expect(vmScanner.clean).not.toHaveBeenCalled();
+    expect(cleanedLabels(safe)).toEqual(['safe-cat-item']);
+  });
+
+  it('keeps cleaning the other categories when one scanner throws, and says so', async () => {
+    safe.clean.mockRejectedValue(new Error('disk on fire'));
+    await cleanCommand({ yes: true, risky: true });
+    expect(cleanedLabels(moderate)).toEqual(['moderate-cat-item']);
+    expect(logged()).toContain('disk on fire');
+  });
+
+  it('prints the errors a scanner returns and still says Done', async () => {
+    safe.clean.mockResolvedValue({ freed: 10, errors: ['/x: EACCES'] });
+    await cleanCommand({ yes: true });
+    expect(logged()).toContain('/x: EACCES');
+    expect(logged()).toContain('Done.');
+  });
+
+  it('skips an item whose category no scanner owns instead of crashing', async () => {
+    const stray = fakeScanner('stray', 'safe', [item('ghost', 'safe', 'ghost-item')]);
+    vi.mocked(getAllScanners).mockReturnValue([stray, safe] as never);
+    await cleanCommand({ yes: true });
+    expect(stray.clean).not.toHaveBeenCalled();
+    expect(cleanedLabels(safe)).toEqual(['safe-cat-item']);
+    expect(logged()).toContain('Done.');
+  });
+
+  it('labels a dry run as one', async () => {
+    await cleanCommand({ yes: true, dryRun: true });
+    expect(logged()).toContain('dry run');
+  });
+
+  it('says there is nothing to clean when every scanner is empty', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([fakeScanner('empty', 'safe', [])] as never);
+    await cleanCommand({ yes: true });
+    expect(logged()).toContain('Nothing to clean');
   });
 });

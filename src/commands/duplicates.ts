@@ -136,7 +136,6 @@ async function walk(dir: string, out: FileEntry[], minSize: number): Promise<voi
     name: string;
     isDirectory: () => boolean;
     isFile: () => boolean;
-    isSymbolicLink: () => boolean;
   }>;
   try {
     entries = (await fs.readdir(dir, { withFileTypes: true })) as typeof entries;
@@ -147,7 +146,6 @@ async function walk(dir: string, out: FileEntry[], minSize: number): Promise<voi
     if (entry.name.startsWith('.') && entry.name !== '.') continue;
     if (SKIP_DIR_NAMES.has(entry.name)) continue;
     const full = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) continue;
     if (entry.isDirectory()) {
       await walk(full, out, minSize);
       continue;

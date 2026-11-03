@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
-import { run } from '../utils/exec.js';
+import { findDirsNamed } from '../utils/find.js';
 import { HOME, assertSafeToDelete } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 import { resolveSearchRoots } from './project-artifacts.js';
@@ -33,15 +33,9 @@ export class GitTmpPacksScanner extends BaseScanner {
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
     for (const root of await resolveSearchRoots(this.searchRoots)) {
-      const escaped = root.replace(/(["\\$`])/g, '\\$1');
-      const { stdout } = await run(
-        `find "${escaped}" -maxdepth ${MAX_DEPTH} -type d \\( -name node_modules -o -name .git \\) -prune -print 2>/dev/null`,
-        { timeout: 60_000 },
-      );
-      for (const line of stdout.split('\n')) {
-        const gitDir = line.trim();
-        if (path.basename(gitDir) !== '.git') continue;
-        results.push(...(await this.leaksIn(path.join(gitDir, PACK_DIR))));
+      for (const dir of await findDirsNamed(root, ['node_modules', '.git'], MAX_DEPTH)) {
+        if (path.basename(dir) !== '.git') continue;
+        results.push(...(await this.leaksIn(path.join(dir, PACK_DIR))));
       }
     }
     return results.sort((a, b) => b.size - a.size);

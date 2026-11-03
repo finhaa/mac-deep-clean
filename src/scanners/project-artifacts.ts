@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types.js';
 import { run } from '../utils/exec.js';
 import { getSize, isDirectory, pathExists } from '../utils/fs.js';
@@ -51,11 +52,15 @@ export class ProjectArtifactsScanner extends BaseScanner {
   readonly risk = 'moderate' as const;
 
   searchRoots: string[] | null = null;
+  excludeRoots: string[] = [];
+  protectedDirs: string[] | null = null;
 
   async scan(): Promise<ScanResult[]> {
     const roots = await this.resolveSearchRoots();
     if (roots.length === 0) return [];
 
+    const protectedDirs = this.protectedDirs ?? (await defaultProtectedDirs());
+    const skip = [...this.excludeRoots, ...protectedDirs];
     const namePattern = ARTIFACT_DIRS.map((n) => `-name "${n}"`).join(' -o ');
     const results: ScanResult[] = [];
 
@@ -71,6 +76,7 @@ export class ProjectArtifactsScanner extends BaseScanner {
         const target = line.trim();
         if (!target) continue;
         if (await isInsideLinkedWorktree(target, root)) continue;
+        if (await isExcluded(target, skip)) continue;
         if (!(await looksLikeBuildArtifact(target))) continue;
         const size = await getSize(target);
         if (size < 10 * 1024 * 1024) continue;
@@ -131,6 +137,41 @@ export async function isInsideLinkedWorktree(target: string, root: string): Prom
     dir = path.dirname(dir);
   }
   return false;
+}
+
+async function realpathOr(p: string): Promise<string> {
+  return fs.realpath(p).catch(() => path.resolve(p));
+}
+
+// True when target is one of the excluded dirs or sits inside one.
+export async function isExcluded(target: string, excludes: string[]): Promise<boolean> {
+  if (excludes.length === 0) return false;
+  const real = await realpathOr(target);
+  for (const exclude of excludes) {
+    const ex = await realpathOr(exclude);
+    if (real === ex || real.startsWith(ex + path.sep)) return true;
+  }
+  return false;
+}
+
+// The node_modules this tool imports from: deleting it would leave the CLI unable to start.
+export async function findOwnNodeModules(startDir: string): Promise<string | null> {
+  let dir = path.resolve(startDir);
+  for (;;) {
+    const pkg = await fs
+      .readFile(path.join(dir, 'package.json'), 'utf8')
+      .then((text) => JSON.parse(text) as { name?: string })
+      .catch(() => null);
+    if (pkg?.name === 'mac-deep-clean') return path.join(dir, 'node_modules');
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+async function defaultProtectedDirs(): Promise<string[]> {
+  const own = await findOwnNodeModules(path.dirname(fileURLToPath(import.meta.url)));
+  return own ? [own] : [];
 }
 
 async function dedupeByRealpath(paths: string[]): Promise<string[]> {

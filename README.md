@@ -45,6 +45,8 @@ mac-deep-clean purge --dry-run    # Preview project artifact deletion
 mac-deep-clean purge --yes        # Skip confirmation (leaves .venv/venv for the interactive picker)
 mac-deep-clean purge --path ~/work ~/oss
                                   # Override the default dev search roots
+mac-deep-clean purge --exclude ~/code/client-a
+                                  # Skip these dirs and everything inside them
 mac-deep-clean duplicates ~/Downloads --min-size 5MB
                                   # Read-only duplicate file report
 ```

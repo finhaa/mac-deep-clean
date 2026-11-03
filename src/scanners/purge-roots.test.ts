@@ -9,7 +9,7 @@ describe('purgeRootProblem', () => {
   it.each([
     home,
     '/',
-    '/Users',
+    path.dirname(home),
     '/Applications',
     '/Applications/Foo.app/Contents/Resources',
     '/usr/local',

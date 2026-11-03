@@ -110,3 +110,40 @@ describe('cleanCommand other paths', () => {
     for (const s of [safe, moderate, risky, mixed]) expect(s.scan).not.toHaveBeenCalled();
   });
 });
+
+describe('cleanCommand with items that have no measurable size', () => {
+  const snapshot: ScanResult = {
+    path: 'snapshots:one',
+    size: 0,
+    label: 'snapshot one',
+    category: 'snap-cat',
+    risk: 'moderate',
+    virtual: true,
+  };
+
+  it('does not report "Nothing to clean" for a virtual item of size 0', async () => {
+    const snaps = fakeScanner('snap-cat', 'moderate', [snapshot]);
+    vi.mocked(getAllScanners).mockReturnValue([snaps] as never);
+
+    await cleanCommand({ yes: true, category: 'snap-cat' });
+
+    expect(cleanedLabels(snaps)).toEqual(['snapshot one']);
+  });
+
+  it('still hides a plain item of size 0, which is an empty folder', async () => {
+    const empty = fakeScanner('empty-cat', 'safe', [
+      {
+        path: '/tmp/mdc-wiring/empty',
+        size: 0,
+        label: 'empty',
+        category: 'empty-cat',
+        risk: 'safe',
+      },
+    ]);
+    vi.mocked(getAllScanners).mockReturnValue([empty] as never);
+
+    await cleanCommand({ yes: true });
+
+    expect(empty.clean).not.toHaveBeenCalled();
+  });
+});

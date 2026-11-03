@@ -66,6 +66,12 @@ sudo node dist/index.js clean --category time-machine
 sudo node dist/index.js clean --category apfs-snapshots
 ```
 
+Each snapshot is listed on its own, by date (Time Machine) or by name (APFS),
+and only the ones you pick are deleted. Snapshots have no measurable size, so
+the list shows 0 B. APFS snapshots are `risky`: they appear only with
+`--category apfs-snapshots` or `--risky`, and the OS update and Time Machine
+snapshots are never offered there.
+
 **Avoid** `sudo npm run dev` — that runs npm itself as root and will
 leave root-owned files in your `node_modules` and `.npm` cache.
 `sudo node dist/index.js` invokes the built binary directly, bypassing

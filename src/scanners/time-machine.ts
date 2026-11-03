@@ -2,6 +2,9 @@ import type { CleanResult, ScanResult } from '../types.js';
 import { commandExists, run } from '../utils/exec.js';
 import { BaseScanner } from './base-scanner.js';
 
+const SNAPSHOT_NAME = /^com\.apple\.TimeMachine\.(\d{4}-\d{2}-\d{2}-\d{6})(?:\.local)?$/;
+const ITEM_PATH = /^tmutil:snapshot:(\d{4}-\d{2}-\d{2}-\d{6})$/;
+
 export class TimeMachineScanner extends BaseScanner {
   readonly name = 'Time Machine Local Snapshots';
   readonly category = 'time-machine';
@@ -12,55 +15,43 @@ export class TimeMachineScanner extends BaseScanner {
     if (!(await commandExists('tmutil'))) return [];
     const { stdout, code } = await run('tmutil listlocalsnapshots /', { timeout: 10_000 });
     if (code !== 0) return [];
-    const snapshots = stdout
+    const dates = stdout
       .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith('com.apple.TimeMachine.'));
-    if (snapshots.length === 0) return [];
+      .map((line) => line.trim().match(SNAPSHOT_NAME)?.[1])
+      .filter((date): date is string => date !== undefined);
 
-    return [
-      {
-        path: 'tmutil:snapshots',
-        size: 0,
-        label: `${snapshots.length} local Time Machine snapshot(s)`,
-        category: this.category,
-        risk: this.risk,
-        description: 'sudo tmutil deletelocalsnapshots / (requires sudo)',
-      },
-    ];
+    return [...new Set(dates)].map((date) => ({
+      path: `tmutil:snapshot:${date}`,
+      size: 0,
+      virtual: true,
+      label: `Time Machine local snapshot ${date}`,
+      category: this.category,
+      risk: this.risk,
+      description: `sudo tmutil deletelocalsnapshots ${date} (requires sudo)`,
+    }));
   }
 
   override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
     let freed = 0;
     const errors: string[] = [];
     for (const r of results) {
+      const date = r.path.match(ITEM_PATH)?.[1];
+      if (!date) {
+        errors.push(`${r.path}: not a Time Machine snapshot`);
+        continue;
+      }
       if (dryRun) {
         freed += r.size;
         continue;
       }
-      const { stdout, code, stderr } = await run('tmutil listlocalsnapshotdates / | tail -n +2', {
-        timeout: 10_000,
+      const { code, stderr } = await run(`sudo tmutil deletelocalsnapshots ${date}`, {
+        timeout: 60_000,
       });
       if (code !== 0) {
-        errors.push(`tmutil list: ${stderr}`);
+        errors.push(`delete ${date}: ${stderr}`);
         continue;
       }
-      const dates = stdout
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean);
-      let anyFailed = false;
-      for (const date of dates) {
-        const { code: delCode, stderr: delErr } = await run(
-          `sudo tmutil deletelocalsnapshots ${date}`,
-          { timeout: 60_000 },
-        );
-        if (delCode !== 0) {
-          errors.push(`delete ${date}: ${delErr}`);
-          anyFailed = true;
-        }
-      }
-      if (!anyFailed) freed += r.size;
+      freed += r.size;
     }
     return { freed, errors };
   }

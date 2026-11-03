@@ -7,6 +7,7 @@ import { DevCacheScanner } from './dev-cache.js';
 import { DiagnosticReportsScanner } from './diagnostic-reports.js';
 import { DockerScanner } from './docker.js';
 import { ElectronAppsScanner } from './electron-apps.js';
+import { GitTmpPacksScanner } from './git-tmp-packs.js';
 import { HomebrewScanner } from './homebrew.js';
 import { IosBackupsScanner } from './ios-backups.js';
 import { IosSimulatorsScanner } from './ios-simulators.js';
@@ -54,6 +55,7 @@ export function getAllScanners(): BaseScanner[] {
     new UserCacheScanner(),
     new SystemCacheScanner(),
     new ProjectArtifactsScanner(),
+    new GitTmpPacksScanner(),
   ];
 }
 

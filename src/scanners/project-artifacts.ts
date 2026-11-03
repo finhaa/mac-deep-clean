@@ -56,7 +56,7 @@ export class ProjectArtifactsScanner extends BaseScanner {
   protectedDirs: string[] | null = null;
 
   async scan(): Promise<ScanResult[]> {
-    const roots = await this.resolveSearchRoots();
+    const roots = await resolveSearchRoots(this.searchRoots);
     if (roots.length === 0) return [];
 
     const protectedDirs = this.protectedDirs ?? (await defaultProtectedDirs());
@@ -94,16 +94,16 @@ export class ProjectArtifactsScanner extends BaseScanner {
 
     return results.sort((a, b) => b.size - a.size);
   }
+}
 
-  private async resolveSearchRoots(): Promise<string[]> {
-    if (this.searchRoots) return dedupeByRealpath(this.searchRoots);
-    const found: string[] = [];
-    for (const name of SEARCH_ROOTS) {
-      const candidate = path.join(HOME, name);
-      if (await isDirectory(candidate)) found.push(candidate);
-    }
-    return dedupeByRealpath(found);
+export async function resolveSearchRoots(explicit: string[] | null): Promise<string[]> {
+  if (explicit) return dedupeByRealpath(explicit);
+  const found: string[] = [];
+  for (const name of SEARCH_ROOTS) {
+    const candidate = path.join(HOME, name);
+    if (await isDirectory(candidate)) found.push(candidate);
   }
+  return dedupeByRealpath(found);
 }
 
 // Names too generic to trust alone: only a build artifact when its project file sits beside it.

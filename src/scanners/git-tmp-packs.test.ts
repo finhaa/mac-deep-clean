@@ -158,6 +158,23 @@ describe('GitTmpPacksScanner.clean', () => {
   });
 });
 
+describe('GitTmpPacksScanner.clean safety guard', () => {
+  it('refuses a tmp_pack path inside a protected folder even though the name matches', async () => {
+    const protectedPack = path.join(os.homedir(), '.ssh/repo/.git/objects/pack/tmp_pack_abc123');
+    const { freed, errors } = await new GitTmpPacksScanner().clean([
+      {
+        path: protectedPack,
+        size: big().length,
+        label: 'x',
+        category: 'git-tmp-packs',
+        risk: 'moderate',
+      },
+    ]);
+    expect(freed).toBe(0);
+    expect(errors[0]).toContain('Refusing to delete');
+  });
+});
+
 describe('registration', () => {
   it('is part of getAllScanners with the git-tmp-packs category', () => {
     expect(getAllScanners().some((s) => s.category === 'git-tmp-packs')).toBe(true);

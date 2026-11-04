@@ -1,4 +1,5 @@
 import fsp from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -29,6 +30,8 @@ import { JetBrainsScanner } from './jetbrains.js';
 import { MailDownloadsScanner } from './mail-downloads.js';
 import { SavedAppStateScanner } from './saved-app-state.js';
 import { ScreenRecordingScanner } from './screen-recording.js';
+import { TempFilesScanner } from './temp-files.js';
+import { TrashScanner } from './trash.js';
 import { UserCacheScanner } from './user-cache.js';
 import { WallpaperCacheScanner } from './wallpaper-cache.js';
 
@@ -228,5 +231,39 @@ describe('BaseScanner.clean through a real scanner', () => {
     expect(freed).toBe(0);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('Refusing to delete');
+  });
+});
+
+describe('TrashScanner', () => {
+  it('adds up what is in the trash and reports it as one item', async () => {
+    await put('.Trash/a', 3 * MB);
+    await put('.Trash/b', 4 * MB);
+    const [item, ...rest] = await new TrashScanner().scan();
+    expect(rest).toEqual([]);
+    expect(item).toMatchObject({ path: path.join(h.home, '.Trash'), size: 7 * MB, risk: 'safe' });
+  });
+
+  it('reports nothing for an empty or missing trash', async () => {
+    expect(await new TrashScanner().scan()).toEqual([]);
+    await put('.Trash/a', 0);
+    expect(await new TrashScanner().scan()).toEqual([]);
+  });
+});
+
+describe('TempFilesScanner.scan', () => {
+  it('offers the per-user temp dir only from 10 MB', async () => {
+    const tmp = await put('T', 10 * MB - 1);
+    vi.spyOn(os, 'tmpdir').mockReturnValue(tmp);
+    expect(await new TempFilesScanner().scan()).toEqual([]);
+    h.sizes.set(tmp, 10 * MB);
+    const [item] = await new TempFilesScanner().scan();
+    expect(item).toMatchObject({ path: tmp, size: 10 * MB, risk: 'moderate' });
+    vi.restoreAllMocks();
+  });
+
+  it('reports nothing when the temp dir does not exist', async () => {
+    vi.spyOn(os, 'tmpdir').mockReturnValue(path.join(h.home, 'nope'));
+    expect(await new TempFilesScanner().scan()).toEqual([]);
+    vi.restoreAllMocks();
   });
 });

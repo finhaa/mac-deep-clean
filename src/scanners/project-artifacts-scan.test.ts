@@ -70,3 +70,35 @@ describe('ProjectArtifactsScanner.scan default self-protect', () => {
     expect(paths).not.toContain(own);
   });
 });
+
+describe('ProjectArtifactsScanner.scan filters', () => {
+  it('skips artifacts inside a linked git worktree but keeps the main checkout', async () => {
+    const main = await artifact(path.join(root, 'main/node_modules'));
+    await fs.mkdir(path.join(root, 'main/.git'), { recursive: true });
+    await artifact(path.join(root, 'linked/node_modules'));
+    await fs.writeFile(path.join(root, 'linked/.git'), 'gitdir: ../main/.git/worktrees/linked');
+
+    const paths = (await scanner(root).scan()).map((r) => r.path);
+
+    expect(paths).toEqual([main]);
+  });
+
+  it('offers target and Pods only next to their project file', async () => {
+    const rust = await artifact(path.join(root, 'rust/target'));
+    await fs.writeFile(path.join(root, 'rust/Cargo.toml'), '[package]');
+    await artifact(path.join(root, 'plain/target'));
+    const pods = await artifact(path.join(root, 'ios/Pods'));
+    await fs.writeFile(path.join(root, 'ios/Podfile'), '');
+    await artifact(path.join(root, 'stray/Pods'));
+
+    const paths = (await scanner(root).scan()).map((r) => r.path).sort();
+
+    expect(paths).toEqual([pods, rust].sort());
+  });
+
+  it('skips artifacts smaller than 10 MB', async () => {
+    await fs.mkdir(path.join(root, 'small/node_modules'), { recursive: true });
+    await fs.writeFile(path.join(root, 'small/node_modules/f'), 'tiny');
+    expect(await scanner(root).scan()).toEqual([]);
+  });
+});

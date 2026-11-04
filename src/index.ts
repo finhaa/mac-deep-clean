@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { cleanCommand } from './commands/clean.js';
 import { doctorCommand } from './commands/doctor.js';
@@ -6,12 +7,15 @@ import { duplicatesCommand } from './commands/duplicates.js';
 import { purgeCommand } from './commands/purge.js';
 import { scanCommand } from './commands/scan.js';
 
+// Both src/ and dist/ sit one level below package.json.
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
+
 const program = new Command();
 
 program
   .name('mac-deep-clean')
   .description('CLI that cleans what other Mac cleaners miss')
-  .version('0.1.0');
+  .version(version);
 
 program
   .command('scan')

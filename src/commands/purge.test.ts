@@ -106,7 +106,19 @@ describe('purgeCommand options', () => {
 
   it('uses --path as the search roots', async () => {
     await purgeCommand({ yes: true, dryRun: true, path: [os.tmpdir()] });
-    expect(state.scanners[0]?.searchRoots).toEqual([os.tmpdir()]);
+    expect(state.scanners[0]?.searchRoots).toEqual([await fsp.realpath(os.tmpdir())]);
+  });
+
+  it('walks the real folder behind a symlinked --path', async () => {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-root-'));
+    try {
+      await fsp.mkdir(path.join(dir, 'real'));
+      await fsp.symlink(path.join(dir, 'real'), path.join(dir, 'link'));
+      await purgeCommand({ yes: true, dryRun: true, path: [path.join(dir, 'link')] });
+      expect(state.scanners[0]?.searchRoots).toEqual([await fsp.realpath(path.join(dir, 'real'))]);
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('rejects a --path that is not a directory and scans nothing', async () => {
@@ -125,6 +137,26 @@ describe('purgeCommand --path', () => {
       expect(process.exitCode).toBe(1);
       expect(state.scanners[0]?.searchRoots).toBeNull();
       expect(removed()).toEqual([]);
+    },
+  );
+
+  it.each(['', 'bin'])(
+    'refuses a symlink that leads into a protected folder, checked on where it really points (%s)',
+    async (sub) => {
+      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-root-'));
+      try {
+        await fsp.symlink('/usr', path.join(dir, 'link'));
+        await purgeCommand({ path: [path.join(dir, 'link', sub)], yes: true });
+        expect(process.exitCode).toBe(1);
+        expect(state.scanners[0]?.searchRoots).toBeNull();
+        const err = vi
+          .mocked(console.error)
+          .mock.calls.map((c) => c.join(' '))
+          .join('\n');
+        expect(err).toContain('protected path');
+      } finally {
+        await fsp.rm(dir, { recursive: true, force: true });
+      }
     },
   );
 });

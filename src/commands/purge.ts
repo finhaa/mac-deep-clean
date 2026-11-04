@@ -1,3 +1,4 @@
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
@@ -33,13 +34,14 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const problem = purgeRootProblem(expanded);
+      const real = await fsp.realpath(expanded);
+      const problem = purgeRootProblem(expanded) ?? purgeRootProblem(real);
       if (problem) {
         console.error(chalk.red(`Refusing to purge from a search root: ${problem}`));
         process.exitCode = 1;
         return;
       }
-      resolved.push(expanded);
+      resolved.push(real);
     }
     scanner.searchRoots = resolved;
   }

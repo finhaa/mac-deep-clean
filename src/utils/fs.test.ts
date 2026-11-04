@@ -29,8 +29,9 @@ describe('getSize with a hostile directory name', () => {
     await fsp.mkdir(dir);
     await fsp.writeFile(path.join(dir, 'f'), Buffer.alloc(8192));
     expect(await getSize(dir)).toBeGreaterThanOrEqual(8192);
-    expect(await pathExists(path.join(root, 'pwned'))).toBe(false);
-    expect(await pathExists(path.join(root, 'pwned2'))).toBe(false);
+    // an injected `touch` runs in the current directory, not in the measured one
+    expect(await pathExists(path.join(process.cwd(), 'pwned'))).toBe(false);
+    expect(await pathExists(path.join(process.cwd(), 'pwned2'))).toBe(false);
   });
 });
 

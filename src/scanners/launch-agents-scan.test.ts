@@ -49,11 +49,22 @@ const ours = async () =>
 describe('LaunchAgentsScanner.scan', () => {
   it('reports an agent whose program no longer exists, from Program or ProgramArguments', async () => {
     const a = await agent('a.plist', JSON.stringify({ Program: '/gone/a' }));
-    const b = await agent('b.plist', JSON.stringify({ ProgramArguments: ['/gone/b', '--x'] }));
+    const b = await agent(
+      'b.plist',
+      JSON.stringify({ ProgramArguments: ['/gone/b', process.execPath] }),
+    );
     const results = await ours();
     expect(results.map((r) => r.path).sort()).toEqual([a, b].sort());
     expect(results[0]?.label).toContain('→');
     expect(results.every((r) => r.risk === 'moderate')).toBe(true);
+  });
+
+  it('judges ProgramArguments by its first entry, the program, never by an argument', async () => {
+    await agent(
+      'runs.plist',
+      JSON.stringify({ ProgramArguments: [process.execPath, '/gone/argument'] }),
+    );
+    expect(await ours()).toEqual([]);
   });
 
   it('keeps agents whose program exists or resolves on the launchd PATH', async () => {
@@ -130,6 +141,20 @@ describe('LaunchAgentsScanner.clean', () => {
     expect(bootouts()[0]).toMatch(/^launchctl bootout gui\/\d+ /);
     expect(bootouts()[0]).toContain(`'${file}'`);
     await expect(fsp.stat(file)).rejects.toThrow();
+  });
+
+  it('removes a plist through the deletion guard, never a protected path', async () => {
+    const protectedItem = {
+      path: '/usr/local/mdc-never-here.plist',
+      size: 5,
+      label: 'x',
+      category: 'launch-agents',
+      risk: 'moderate' as const,
+    };
+    const { freed, errors } = await new LaunchAgentsScanner().clean([protectedItem], false);
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('Refusing to delete protected path');
   });
 
   it('does not try to unload a plist outside the user LaunchAgents folder', async () => {

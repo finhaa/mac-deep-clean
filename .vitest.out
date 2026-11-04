@@ -1,0 +1,103 @@
+
+ RUN  v4.1.12 /private/tmp/claude-501/mdc-f3
+
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+ ❯ src/utils/warnings.test.ts (6 tests | 1 failed) 33ms
+     × point to Full Disk Access for ~/Library paths 30ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/utils/warnings.test.ts > permission warnings > point to Full Disk Access for ~/Library paths
+AssertionError: expected '1 system path(s) are root-owned — FDA…' to contain 'Full Disk Access'
+
+- Expected
++ Received
+
+- Full Disk Access
++ 1 system path(s) are root-owned — FDA can't fix these (≥ 150 MB partially read):
++     ~/Library/Mail
++     Fix: npm run build && sudo node dist/index.js scan
+
+ ❯ src/utils/warnings.test.ts:20:21
+     18|     addPermissionWarning(path.join(os.homedir(), 'Library/Mail'), 150 …
+     19|     const [message] = flushWarnings();
+     20|     expect(message).toContain('Full Disk Access');
+       |                     ^
+     21|     expect(message).toContain('~/Library/Mail');
+     22|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 44 passed (45)
+      Tests  1 failed | 593 passed (594)
+   Start at  17:29:49
+   Duration  3.49s (transform 2.09s, setup 590ms, import 4.88s, tests 16.34s, environment 12ms)
+

@@ -139,6 +139,12 @@ describe('cleanCommand --yes skip message', () => {
       { ...item('ios-backups', 'moderate'), irreversible: true },
     ]);
 
+  it('says nothing when every item was picked', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([safe] as never);
+    await cleanCommand({ yes: true });
+    expect(logged()).not.toContain('Skipped');
+  });
+
   it('offers --risky when it was not given', async () => {
     await cleanCommand({ yes: true });
     expect(logged()).toContain('Skipped 1 item(s) that are not safe');

@@ -64,12 +64,16 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   let selected: ScanResult[];
 
   if (options.yes) {
-    selected = autoSelect(nonEmpty, Boolean(options.risky || options.category));
+    selected = autoSelect(
+      nonEmpty,
+      Boolean(options.risky || options.category),
+      Boolean(options.category),
+    );
     const skipped = nonEmpty.reduce((s, r) => s + r.results.length, 0) - selected.length;
     if (skipped > 0) {
       console.log(
         chalk.grey(
-          `\nSkipped ${skipped} item(s) that are not safe or are virtualenvs. Run without --yes to pick them, or add --risky for the rest.`,
+          `\nSkipped ${skipped} item(s) that are not safe, are virtualenvs or need their own --category. Run without --yes to pick them, or add --risky for the rest.`,
         ),
       );
     }

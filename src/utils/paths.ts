@@ -1,9 +1,19 @@
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 export const HOME = os.homedir();
 
-const HOMES: readonly string[] = [...new Set([HOME, os.userInfo().homedir])];
+// A HOME spelled through a symlink must protect the folders it really points at, so its real path counts too.
+function realHome(): string {
+  try {
+    return fs.realpathSync(HOME);
+  } catch {
+    return HOME;
+  }
+}
+
+const HOMES: readonly string[] = [...new Set([HOME, os.userInfo().homedir, realHome()])];
 
 const HOME_SUBTREES = [
   'Documents',
@@ -16,6 +26,9 @@ const HOME_SUBTREES = [
   '.gnupg',
   'Library/Keychains',
   'Library/Preferences',
+  'Library/Mobile Documents',
+  'Library/Mail',
+  'Library/Messages',
 ];
 
 // Nothing under these is ever a deletion target.
@@ -25,6 +38,9 @@ const PROTECTED_SUBTREES: readonly string[] = [
   '/usr',
   '/bin',
   '/sbin',
+  '/etc',
+  '/private/etc',
+  '/Applications',
   '/private/var/db',
   '/private/var/protected',
   '/var/db',
@@ -48,6 +64,9 @@ const PROTECTED_EXACT: readonly string[] = [
 ];
 
 export const PROTECTED_PATHS: readonly string[] = [...PROTECTED_EXACT, ...PROTECTED_SUBTREES];
+
+// Another user's home folder itself: its project folders stay deletable, the folder does not.
+const OTHER_USER_HOME = /^\/users\/[^/]+$/;
 
 const OTHER_USER_SUBTREE = new RegExp(
   `^/Users/[^/]+/(${HOME_SUBTREES.map((sub) => sub.replace('.', '\\.')).join('|')})(/|$)`,
@@ -74,7 +93,7 @@ export function isInside(parent: string, child: string): boolean {
 export function isProtectedPath(target: string): boolean {
   const resolved = fold(target);
   if (PROTECTED_EXACT.some((p) => fold(p) === resolved)) return true;
-  if (OTHER_USER_SUBTREE.test(resolved)) return true;
+  if (OTHER_USER_HOME.test(resolved) || OTHER_USER_SUBTREE.test(resolved)) return true;
   return PROTECTED_SUBTREES.some((p) => {
     const root = fold(p);
     return resolved === root || resolved.startsWith(`${root}/`);

@@ -1,6 +1,7 @@
+import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { assertSafeToDelete, isInside, isProtectedPath } from './paths.js';
 
 describe('isProtectedPath', () => {
@@ -132,6 +133,15 @@ describe('protected subtrees (README: never touched, nor any directory that cont
     path.join(home, 'Library/Preferences/com.apple.finder.plist'),
     '/Users/other/Documents/x',
     '/Users/other/.ssh/id_rsa',
+    path.join(home, 'Library/Mobile Documents/com~apple~CloudDocs/x'),
+    path.join(home, 'Library/Mail/V10/x'),
+    path.join(home, 'Library/Messages/chat.db'),
+    '/Users/other/Library/Mobile Documents/x',
+    '/Users/other/Library/Mail/V10',
+    '/Users/other/Library/Messages/chat.db',
+    '/etc/hosts',
+    '/private/etc/hosts',
+    '/Applications/Foo.app',
   ];
 
   it.each(subtreeFiles)('refuses to delete %s', (target) => {
@@ -182,5 +192,53 @@ describe('isInside', () => {
 
   it('resolves relative segments before comparing', () => {
     expect(isInside('/opt', '/opt/../tmp')).toBe(false);
+  });
+});
+
+describe('the home folder of another user', () => {
+  it.each(['/Users/other', '/Users/other/', '/users/OTHER'])('protects %s itself', (target) => {
+    expect(isProtectedPath(target)).toBe(true);
+    expect(() => assertSafeToDelete(target)).toThrow(/Refusing to delete protected path/);
+  });
+
+  it('leaves a project folder inside it to the scanners', () => {
+    expect(isProtectedPath('/Users/other/code/app/node_modules')).toBe(false);
+  });
+});
+
+describe('a HOME that is spelled through a symlink', () => {
+  it('still protects the real folders behind it', async () => {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-home-link-'));
+    try {
+      const realHome = path.join(dir, 'real');
+      await fsp.mkdir(realHome);
+      const linkHome = path.join(dir, 'link');
+      await fsp.symlink(realHome, linkHome);
+      vi.resetModules();
+      vi.stubEnv('HOME', linkHome);
+      const fresh = await import('./paths.js');
+      expect(fresh.isProtectedPath(path.join(linkHome, 'Documents/x'))).toBe(true);
+      expect(fresh.isProtectedPath(path.join(await fsp.realpath(realHome), 'Documents/x'))).toBe(
+        true,
+      );
+      expect(fresh.isProtectedPath(await fsp.realpath(realHome))).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('protects only its own spelling when HOME does not exist', async () => {
+    try {
+      vi.resetModules();
+      vi.stubEnv('HOME', '/mdc-missing/home');
+      const fresh = await import('./paths.js');
+      expect(fresh.isProtectedPath('/mdc-missing/home/Documents/x')).toBe(true);
+      expect(fresh.isProtectedPath('/nonexistent-home/Documents/x')).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });

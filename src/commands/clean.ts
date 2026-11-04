@@ -71,11 +71,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     );
     const skipped = nonEmpty.reduce((s, r) => s + r.results.length, 0) - selected.length;
     if (skipped > 0) {
-      console.log(
-        chalk.grey(
-          `\nSkipped ${skipped} item(s) that are not safe, are virtualenvs or need their own --category. Run without --yes to pick them, or add --risky for the rest.`,
-        ),
-      );
+      console.log(chalk.grey(`\n${skippedMessage(skipped, options)}`));
     }
   } else {
     selected = await promptSelection(nonEmpty);
@@ -171,4 +167,13 @@ async function executeCleanup(selected: ScanResult[], dryRun: boolean): Promise<
     if (allErrors.length > 20) console.log(chalk.grey(`  … and ${allErrors.length - 20} more`));
   }
   console.log();
+}
+
+function skippedMessage(count: number, options: { risky?: boolean; category?: string }): string {
+  const skipped = `Skipped ${count} item(s)`;
+  const pick = 'Run without --yes to pick them';
+  if (options.category) return `${skipped} that are virtualenvs. ${pick}.`;
+  if (options.risky)
+    return `${skipped} that are virtualenvs or need their own --category. ${pick}.`;
+  return `${skipped} that are not safe, are virtualenvs or need their own --category. ${pick}, or add --risky for the rest.`;
 }

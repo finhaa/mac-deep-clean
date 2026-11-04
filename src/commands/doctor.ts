@@ -17,7 +17,9 @@ interface DiskInfo {
 }
 
 async function getDiskInfo(): Promise<DiskInfo | null> {
-  const { stdout, code } = await run('df -k /', { timeout: 5000 });
+  // On macOS `/` is the sealed system volume (about 13 GB used); the user's data lives on the Data volume.
+  const volume = process.platform === 'darwin' ? '/System/Volumes/Data' : '/';
+  const { stdout, code } = await run(`df -k ${volume}`, { timeout: 5000 });
   if (code !== 0) return null;
   const lines = stdout.trim().split('\n');
   if (lines.length < 2) return null;

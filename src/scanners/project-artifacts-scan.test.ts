@@ -71,6 +71,24 @@ describe('ProjectArtifactsScanner.scan default self-protect', () => {
   });
 });
 
+describe('ProjectArtifactsScanner.scan default self-protect wiring', () => {
+  it("protects the running tool's node_modules when no protectedDirs are injected", async () => {
+    const pkg = path.join(root, 'tool');
+    await fs.mkdir(path.join(pkg, 'dist'), { recursive: true });
+    await fs.writeFile(path.join(pkg, 'package.json'), JSON.stringify({ name: 'mac-deep-clean' }));
+    const own = await artifact(path.join(pkg, 'node_modules'));
+    const other = await artifact(path.join(root, 'other/node_modules'));
+    const s = new ProjectArtifactsScanner();
+    s.searchRoots = [root];
+    s.ownDir = path.join(pkg, 'dist');
+
+    const paths = (await s.scan()).map((r) => r.path);
+
+    expect(paths).toContain(other);
+    expect(paths).not.toContain(own);
+  });
+});
+
 describe('ProjectArtifactsScanner.scan filters', () => {
   it('skips artifacts inside a linked git worktree but keeps the main checkout', async () => {
     const main = await artifact(path.join(root, 'main/node_modules'));

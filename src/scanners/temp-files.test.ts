@@ -101,9 +101,11 @@ describe('TempFilesScanner', () => {
   });
 
   it('refuses a path the guard protects and frees nothing', async () => {
-    const { freed, errors } = await new TempFilesScanner().clean([
-      { path: '/tmp', size: 99, label: 'tmp', category: 'temp-files', risk: 'moderate' as const },
-    ]);
+    // dry run: if the guard ever regressed, a real run would execute `find /tmp -delete`
+    const { freed, errors } = await new TempFilesScanner().clean(
+      [{ path: '/tmp', size: 99, label: 'tmp', category: 'temp-files', risk: 'moderate' as const }],
+      true,
+    );
     expect(freed).toBe(0);
     expect(errors[0]).toContain('near-root');
   });

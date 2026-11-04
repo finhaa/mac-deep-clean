@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ScanResult } from '../types.js';
+import type { CleanResult, ScanResult } from '../types.js';
 import { run } from '../utils/exec.js';
-import { isDirectory, listDir, pathExists } from '../utils/fs.js';
+import { isDirectory, listDir, pathExists, safeRemove } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -26,7 +26,7 @@ export class LaunchAgentsScanner extends BaseScanner {
         if (!name.endsWith('.plist')) continue;
         const plistPath = path.join(root, name);
         const program = await readPlistProgram(plistPath);
-        if (!program) continue;
+        if (!program || !(await canJudgeProgram(program))) continue;
         if (await programResolves(program)) continue;
         const stat = await fs.lstat(plistPath).catch(() => null);
         const size = stat?.size ?? 0;
@@ -42,6 +42,32 @@ export class LaunchAgentsScanner extends BaseScanner {
     }
     return results;
   }
+
+  override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
+    let freed = 0;
+    const errors: string[] = [];
+    for (const r of results) {
+      try {
+        if (!dryRun) {
+          await bootOut(r.path);
+          await safeRemove(r.path);
+        }
+        freed += r.size;
+      } catch (err) {
+        errors.push(`${r.path}: ${(err as Error).message}`);
+      }
+    }
+    return { freed, errors };
+  }
+}
+
+// Only a user agent can be unloaded without root; a job that is not loaded makes bootout fail, which is fine.
+async function bootOut(plistPath: string): Promise<void> {
+  if (!plistPath.startsWith(path.join(HOME, 'Library/LaunchAgents') + path.sep)) return;
+  const uid = process.env.SUDO_UID ?? String(process.getuid?.() ?? '');
+  if (!/^\d+$/.test(uid)) return;
+  const escaped = plistPath.replace(/(["\\$`])/g, '\\$1');
+  await run(`launchctl bootout gui/${uid} "${escaped}"`, { timeout: 5000 });
 }
 
 const LAUNCHD_PATH = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
@@ -55,6 +81,17 @@ export async function programResolves(
     if (await exists(path.join(dir, program))) return true;
   }
   return false;
+}
+
+// launchd resolves a relative path against its own working directory, and a program on an unmounted volume
+// is not missing, only out of reach: neither is evidence of an orphan.
+export async function canJudgeProgram(
+  program: string,
+  exists: (p: string) => Promise<boolean> = pathExists,
+): Promise<boolean> {
+  if (program.includes('/') && !path.isAbsolute(program)) return false;
+  const volume = /^\/Volumes\/[^/]+/.exec(program)?.[0];
+  return !volume || exists(volume);
 }
 
 async function readPlistProgram(plistPath: string): Promise<string | null> {

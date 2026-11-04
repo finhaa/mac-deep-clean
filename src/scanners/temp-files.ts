@@ -1,6 +1,6 @@
 import os from 'node:os';
 import type { CleanResult, ScanResult } from '../types.js';
-import { run } from '../utils/exec.js';
+import { run, shellQuote } from '../utils/exec.js';
 import { getSize, pathExists, resolveDeletionTarget } from '../utils/fs.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -49,7 +49,7 @@ export class TempFilesScanner extends BaseScanner {
   override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {
     let freed = 0;
     const errors: string[] = [];
-    const user = process.env.USER ?? '';
+    const user = os.userInfo().username;
     for (const r of results) {
       try {
         await resolveDeletionTarget(r.path);
@@ -58,10 +58,8 @@ export class TempFilesScanner extends BaseScanner {
           continue;
         }
         const before = await getSize(r.path);
-        const escaped = r.path.replace(/(["\\$`])/g, '\\$1');
-        const filter = user ? `-user "${user}"` : '';
         const { code, stderr } = await run(
-          `find "${escaped}" ${filter} -type f -mtime +1 -delete`,
+          `find ${shellQuote(r.path)} -user ${shellQuote(user)} -type f -mtime +1 -delete`,
           { timeout: 60_000 },
         );
         if (code !== 0) {

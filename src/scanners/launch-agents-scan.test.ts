@@ -12,10 +12,11 @@ vi.mock('../utils/paths.js', async (importOriginal) => {
   h.home = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'mdc-agents-'));
   return { ...actual, HOME: h.home };
 });
-vi.mock('../utils/exec.js', () => ({
+vi.mock('../utils/exec.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils/exec.js')>()),
   run: vi.fn(async (command: string) => {
     for (const [file, json] of h.plists) {
-      if (command.includes(`"${file}"`)) return { stdout: json, stderr: '', code: 0 };
+      if (command.includes(`'${file}'`)) return { stdout: json, stderr: '', code: 0 };
     }
     return { stdout: '', stderr: '', code: 1 };
   }),
@@ -101,7 +102,7 @@ describe('LaunchAgentsScanner.clean', () => {
     expect(freed).toBe(item.size);
     expect(bootouts()).toHaveLength(1);
     expect(bootouts()[0]).toMatch(/^launchctl bootout gui\/\d+ /);
-    expect(bootouts()[0]).toContain(file);
+    expect(bootouts()[0]).toContain(`'${file}'`);
     await expect(fsp.stat(file)).rejects.toThrow();
   });
 

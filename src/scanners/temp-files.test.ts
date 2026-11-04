@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TempFilesScanner, tempCandidates } from './temp-files.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -102,5 +102,24 @@ describe('TempFilesScanner', () => {
     expect(freed).toBe(0);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('protected');
+  });
+
+  it('filters by the real account, not by whatever $USER says', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    const oldFile = path.join(dir, 'old.bin');
+    await fs.writeFile(oldFile, Buffer.alloc(1000));
+    const threeDaysAgo = new Date(Date.now() - 3 * DAY_MS);
+    await fs.utimes(oldFile, threeDaysAgo, threeDaysAgo);
+    vi.stubEnv('USER', 'someone"; touch /tmp/mdc-pwned; "');
+
+    const { freed, errors } = await new TempFilesScanner().clean(
+      [{ path: dir, size: 1000, label: 'x', category: 'temp-files', risk: 'moderate' }],
+      false,
+    );
+    vi.unstubAllEnvs();
+
+    expect(errors).toEqual([]);
+    expect(freed).toBeGreaterThan(0);
+    await expect(fs.stat(oldFile)).rejects.toThrow();
   });
 });

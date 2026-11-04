@@ -109,13 +109,15 @@ describe('purgeCommand options', () => {
     expect(state.scanners[0]?.searchRoots).toEqual([await fsp.realpath(os.tmpdir())]);
   });
 
-  it('walks the real folder behind a symlinked --path', async () => {
+  it('walks the real folder behind a --path with a symlinked parent', async () => {
     const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-root-'));
     try {
-      await fsp.mkdir(path.join(dir, 'real'));
+      await fsp.mkdir(path.join(dir, 'real/child'), { recursive: true });
       await fsp.symlink(path.join(dir, 'real'), path.join(dir, 'link'));
-      await purgeCommand({ yes: true, dryRun: true, path: [path.join(dir, 'link')] });
-      expect(state.scanners[0]?.searchRoots).toEqual([await fsp.realpath(path.join(dir, 'real'))]);
+      await purgeCommand({ yes: true, dryRun: true, path: [path.join(dir, 'link/child')] });
+      expect(state.scanners[0]?.searchRoots).toEqual([
+        await fsp.realpath(path.join(dir, 'real/child')),
+      ]);
     } finally {
       await fsp.rm(dir, { recursive: true, force: true });
     }
@@ -140,8 +142,8 @@ describe('purgeCommand --path', () => {
     },
   );
 
-  it.each(['', 'bin'])(
-    'refuses a symlink that leads into a protected folder, checked on where it really points (%s)',
+  it.each(['bin', 'sbin'])(
+    'refuses /usr/%s reached through a symlink, checked on where it really points',
     async (sub) => {
       const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-root-'));
       try {

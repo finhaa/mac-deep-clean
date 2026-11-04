@@ -173,7 +173,7 @@ describe('risk labels of folders that can hold work not stored elsewhere', () =>
   it('keeps Mail Downloads, JetBrains and Trash out of the safe tier', async () => {
     await put('Library/Containers/com.apple.mail/Data/Library/Mail Downloads', 5 * MB);
     await put('Library/Caches/JetBrains/IntelliJIdea2024.1', 40 * MB);
-    await put('.Trash', 5 * MB);
+    await put('.Trash/a', 5 * MB);
     for (const scanner of [
       new MailDownloadsScanner(),
       new JetBrainsScanner(),

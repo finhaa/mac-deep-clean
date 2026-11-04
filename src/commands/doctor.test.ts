@@ -48,7 +48,12 @@ function report(category: string, name: string, size: number, cleanable?: false)
 
 let output: string;
 
+const df = (used: number, avail: number, blocks = used + avail) =>
+  `Filesystem 1024-blocks Used Available Capacity iused ifree %iused Mounted on\n/dev/disk3s1 ${blocks} ${used} ${avail} 47% 1 2 0% /System/Volumes/Data\n`;
+const ok = (stdout: string) => ({ stdout, stderr: '', code: 0 });
+
 beforeEach(() => {
+  vi.mocked(run).mockClear();
   output = '';
   vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
     output += `${args.join(' ')}\n`;
@@ -107,5 +112,51 @@ describe('doctorCommand', () => {
     state.reports = [];
     await doctorCommand();
     expect(vi.mocked(run).mock.calls.map((c) => c[0])).toContain('df -k /');
+  });
+
+  it('reports free space against used plus free, since the container total on a shared APFS volume is not this volume', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(424_000_000, 492_000_000, 971_298_980)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).toContain('(53.7%)');
+    expect(output).not.toContain('56.4%');
+  });
+
+  it('shows the same total it measured the percentage against', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(424_000_000, 492_000_000, 971_298_980)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).toContain('874 GB total');
+  });
+
+  it('warns about low space on the used-plus-free base', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(900_000, 95_000, 1_000_000)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).toContain('Low disk space');
+  });
+
+  it('only says the disk is filling up between 10% and 20% free', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(850_000, 150_000)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).toContain('Disk filling up');
+    expect(output).not.toContain('Low disk space');
+  });
+
+  it('prints no warning with plenty of room', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(500_000, 500_000)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).not.toContain('⚠');
+  });
+
+  it('prints no disk line when df fails or prints only a header', async () => {
+    vi.mocked(run).mockResolvedValueOnce({ stdout: '', stderr: 'boom', code: 1 });
+    vi.mocked(run).mockResolvedValueOnce(ok('Filesystem 1024-blocks Used Available\n'));
+    state.reports = [];
+    await doctorCommand();
+    await doctorCommand();
+    expect(output).not.toContain('Disk:');
   });
 });

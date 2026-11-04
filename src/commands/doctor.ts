@@ -24,9 +24,11 @@ async function getDiskInfo(): Promise<DiskInfo | null> {
   const lines = stdout.trim().split('\n');
   if (lines.length < 2) return null;
   const parts = lines[1]!.split(/\s+/);
-  const total = Number.parseInt(parts[1] ?? '0', 10) * 1024;
   const used = Number.parseInt(parts[2] ?? '0', 10) * 1024;
   const free = Number.parseInt(parts[3] ?? '0', 10) * 1024;
+  // On a shared APFS container the 1024-blocks column is the whole container, so the volume's own
+  // total is used plus free, the same base `df` uses for its Capacity column.
+  const total = used + free;
   return {
     total,
     used,

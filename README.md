@@ -37,7 +37,7 @@ mac-deep-clean scan --deep        # Also report Electron app full state (risky)
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
 mac-deep-clean clean --risky      # Include risky categories (docker, Electron state)
-mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky)
+mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky); .venv/venv always left to the picker
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...

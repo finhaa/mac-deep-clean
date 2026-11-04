@@ -32,4 +32,17 @@ describe('autoSelect', () => {
   it('selects every risk level when the caller opted in', () => {
     expect(autoSelect(reports, true).map((r) => r.path)).toEqual(['safe', 'moderate', 'risky']);
   });
+
+  it('leaves virtualenvs to a manual pick even when every risk level is opted in', () => {
+    const artifacts = report([
+      { ...item('/p/node_modules', 'moderate'), category: 'project-artifacts' },
+      { ...item('/p/.venv', 'moderate'), category: 'project-artifacts' },
+      { ...item('/p/venv', 'moderate'), category: 'project-artifacts' },
+      { ...item('/q/venv', 'moderate'), category: 'other' },
+    ]);
+    expect(autoSelect([artifacts], true).map((r) => r.path)).toEqual([
+      '/p/node_modules',
+      '/q/venv',
+    ]);
+  });
 });

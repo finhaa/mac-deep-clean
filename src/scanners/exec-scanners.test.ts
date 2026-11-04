@@ -171,10 +171,7 @@ describe('IosSimulatorsScanner', () => {
 });
 
 describe('DockerScanner', () => {
-  const DF = `TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
-Images          10        2         5GB       3GB (60%)
-Build Cache     50        0         2GB       1GB (50%)
-`;
+  const DF = 'Images\t3GB (60%)\nBuild Cache\t1GB (50%)\n';
 
   it('reports nothing without docker', async () => {
     existsMock.mockResolvedValue(false);
@@ -183,7 +180,7 @@ Build Cache     50        0         2GB       1GB (50%)
 
   it('reports the reclaimable total as one prune item and the VM disk as info only', async () => {
     existsMock.mockResolvedValue(true);
-    runMock.mockResolvedValueOnce(ok('Images\t5GB\t3GB (60%)\n')).mockResolvedValueOnce(ok(DF));
+    runMock.mockResolvedValueOnce(ok(DF));
     await put('Library/Containers/com.docker.docker/Data/vms', 20 * MB);
     const results = await new DockerScanner().scan();
     expect(results.map((r) => [r.path, r.cleanable])).toEqual([

@@ -18,7 +18,7 @@ export function reclaimableBytes(dfOutput: string): number {
   let total = 0;
   for (const line of dfOutput.split('\n')) {
     if (/^Local Volumes/i.test(line)) continue;
-    const match = line.match(/(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)\s*\((\d+)%\)/i);
+    const match = line.match(/(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)(?:\s*\(\d+%\))?\s*$/i);
     if (!match) continue;
     total += Number.parseFloat(match[1]!) * (SIZE_MULTIPLIERS[match[2]!.toUpperCase()] ?? 0);
   }
@@ -35,13 +35,12 @@ export class DockerScanner extends BaseScanner {
     if (!(await commandExists('docker'))) return [];
 
     const results: ScanResult[] = [];
-    const { stdout, code } = await run(
-      'docker system df --format "{{.Type}}\t{{.Size}}\t{{.Reclaimable}}"',
-      { timeout: 10_000 },
-    );
+    const { stdout, code } = await run('docker system df --format "{{.Type}}\t{{.Reclaimable}}"', {
+      timeout: 10_000,
+    });
 
     if (code === 0 && stdout.trim()) {
-      const total = await this.reclaimableBytes();
+      const total = reclaimableBytes(stdout);
       if (total > 0) {
         results.push({
           path: 'docker:system',
@@ -73,11 +72,6 @@ export class DockerScanner extends BaseScanner {
     }
 
     return results;
-  }
-
-  private async reclaimableBytes(): Promise<number> {
-    const { stdout, code } = await run('docker system df', { timeout: 10_000 });
-    return code === 0 ? reclaimableBytes(stdout) : 0;
   }
 
   override async clean(results: ScanResult[], dryRun = false): Promise<CleanResult> {

@@ -228,4 +228,17 @@ describe('a HOME that is spelled through a symlink', () => {
       await fsp.rm(dir, { recursive: true, force: true });
     }
   });
+
+  it('protects only its own spelling when HOME does not exist', async () => {
+    try {
+      vi.resetModules();
+      vi.stubEnv('HOME', '/mdc-missing/home');
+      const fresh = await import('./paths.js');
+      expect(fresh.isProtectedPath('/mdc-missing/home/Documents/x')).toBe(true);
+      expect(fresh.isProtectedPath('/nonexistent-home/Documents/x')).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
 });

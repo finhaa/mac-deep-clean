@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { stripControl } from './format.js';
-import { HOME } from './paths.js';
+import { stripControl, tildify } from './format.js';
+import { HOME, isInside } from './paths.js';
 
 type WarningKind = 'fda' | 'sudo' | 'other';
 
@@ -18,17 +18,12 @@ export function addPermissionWarning(target: string, partialBytes = 0): void {
   warnings.push({ kind: inferKind(target), path: target, partialBytes });
 }
 
+const SYSTEM_ROOTS = ['/Library', '/private', '/System', '/usr'];
+
 function inferKind(target: string): WarningKind {
   const resolved = path.resolve(target);
-  if (
-    resolved.startsWith('/Library') ||
-    resolved.startsWith('/private') ||
-    resolved.startsWith('/System') ||
-    resolved.startsWith('/usr')
-  ) {
-    return 'sudo';
-  }
-  if (resolved.startsWith(path.join(HOME, 'Library'))) return 'fda';
+  if (isInside(path.join(HOME, 'Library'), resolved)) return 'fda';
+  if (SYSTEM_ROOTS.some((root) => isInside(root, resolved))) return 'sudo';
   return 'other';
 }
 
@@ -79,8 +74,7 @@ function sumBytes(list: PermissionWarning[]): number {
 }
 
 function displayPath(p: string): string {
-  const resolved = path.resolve(p);
-  return stripControl(resolved.startsWith(HOME) ? `~${resolved.slice(HOME.length)}` : resolved);
+  return stripControl(tildify(path.resolve(p)));
 }
 
 function sampleLines(list: PermissionWarning[]): string {

@@ -4,9 +4,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { colorSize, formatBytes, truncate } from '../utils/format.js';
+import { colorSize, formatBytes, tildify, truncate } from '../utils/format.js';
 import { isDirectory } from '../utils/fs.js';
-import { HOME, expandHome } from '../utils/paths.js';
+import { expandHome } from '../utils/paths.js';
 
 interface DuplicatesOptions {
   minSize?: string;
@@ -125,7 +125,7 @@ export async function duplicatesCommand(
       `${chalk.bold(`${group.files.length}× ${formatBytes(first.size)}`)} ${chalk.grey(`(${formatBytes(group.wasted)} wasted)`)}`,
     );
     for (const f of group.files) {
-      console.log(`  ${chalk.grey('•')} ${truncate(displayPath(f.path), 100)}`);
+      console.log(`  ${chalk.grey('•')} ${truncate(tildify(f.path), 100)}`);
     }
     console.log();
   }
@@ -200,9 +200,4 @@ function parseSize(input: string): number | null {
     TB: 1024 ** 4,
   };
   return Math.round(value * (multipliers[unit] ?? 1));
-}
-
-function displayPath(p: string): string {
-  if (p.startsWith(HOME)) return `~${p.slice(HOME.length)}`;
-  return p;
 }

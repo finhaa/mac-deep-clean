@@ -1,5 +1,7 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { colorRisk, colorSize, formatBytes, stripControl, truncate } from './format.js';
+import { colorRisk, colorSize, formatBytes, stripControl, tildify, truncate } from './format.js';
+import { HOME } from './paths.js';
 
 describe('formatBytes', () => {
   it('handles zero', () => {
@@ -60,5 +62,20 @@ describe('stripControl', () => {
 
   it('is applied by truncate, so a hostile label cannot rewrite its own line', () => {
     expect(truncate('evil\u001b[2K\rname', 50)).toBe('evil?[2K?name');
+  });
+});
+
+describe('tildify', () => {
+  it('writes HOME as ~ and a path inside it as ~/...', () => {
+    expect(tildify(HOME)).toBe('~');
+    expect(tildify(path.join(HOME, 'Library/Mail'))).toBe('~/Library/Mail');
+  });
+
+  it('leaves a sibling that only shares the HOME prefix alone', () => {
+    expect(tildify(`${HOME}ael/Library`)).toBe(`${HOME}ael/Library`);
+  });
+
+  it('leaves a path outside HOME alone', () => {
+    expect(tildify('/Volumes/disk/x')).toBe('/Volumes/disk/x');
   });
 });

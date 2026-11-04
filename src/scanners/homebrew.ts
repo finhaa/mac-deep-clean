@@ -26,7 +26,7 @@ export class HomebrewScanner extends BaseScanner {
         label: 'Homebrew cache & old versions',
         category: this.category,
         risk: this.risk,
-        description: `brew cleanup -s (cache at ${cachePath})`,
+        description: `brew cleanup -s --prune=all, frees at most this size (cache at ${cachePath})`,
       },
     ];
   }

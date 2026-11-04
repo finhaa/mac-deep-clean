@@ -81,6 +81,8 @@ describe('HomebrewScanner', () => {
     expect(rest).toEqual([]);
     expect(result).toMatchObject({ path: 'brew:cleanup', size: 12 * MB, category: 'homebrew' });
     expect(result?.description).toContain(cache);
+    expect(result?.description).toContain('--prune=all');
+    expect(result?.description).toContain('at most');
   });
 
   it('reports nothing for a cache folder that is missing or empty', async () => {
@@ -120,6 +122,7 @@ describe('IosSimulatorsScanner', () => {
     existsMock.mockResolvedValue(true);
     const [result] = await new IosSimulatorsScanner().scan();
     expect(result).toMatchObject({ path: 'xcrun:simctl:unavailable', size: 9 * MB });
+    expect(result?.description).toContain('at most');
   });
 
   it('reports DerivedData as safe and Archives as moderate', async () => {

@@ -47,6 +47,13 @@ describe('stripControl', () => {
     expect(stripControl('a\rb\nc\u007fd\u009be\u0000f')).toBe('a?b?c?d?e?f');
   });
 
+  it('covers the whole control ranges, both ends included', () => {
+    for (const code of [0x00, 0x1f, 0x7f, 0x80, 0x9f]) {
+      expect(stripControl(`a${String.fromCharCode(code)}b`), `U+${code.toString(16)}`).toBe('a?b');
+    }
+    expect(stripControl('a b\u00a0c')).toBe('a b\u00a0c');
+  });
+
   it('keeps ordinary text, spaces and non-ASCII letters', () => {
     expect(stripControl('node_modules café 日本')).toBe('node_modules café 日本');
   });

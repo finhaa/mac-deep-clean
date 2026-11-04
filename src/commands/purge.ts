@@ -8,7 +8,7 @@ import {
   purgeRootProblem,
 } from '../scanners/project-artifacts.js';
 import type { ScanResult } from '../types.js';
-import { colorSize, formatBytes, truncate } from '../utils/format.js';
+import { colorSize, formatBytes, stripControl, truncate } from '../utils/format.js';
 import { isDirectory } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 
@@ -135,7 +135,7 @@ async function deleteAll(results: ScanResult[], dryRun: boolean): Promise<void> 
   spinner.succeed(`Freed ${formatBytes(freed)}${dryRun ? ' (dry run)' : ''}`);
   if (errors.length > 0) {
     console.log(chalk.yellow(`\n${errors.length} warning(s):`));
-    for (const e of errors.slice(0, 20)) console.log(`  ${chalk.yellow('⚠')} ${e}`);
+    for (const e of errors.slice(0, 20)) console.log(`  ${chalk.yellow('⚠')} ${stripControl(e)}`);
   }
   console.log();
 }

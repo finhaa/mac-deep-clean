@@ -4,7 +4,7 @@ import ora from 'ora';
 import { runScanners } from '../runner.js';
 import { getAllScanners } from '../scanners/index.js';
 import type { CleanOptions, ScanResult, ScannerReport } from '../types.js';
-import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
+import { colorRisk, colorSize, formatBytes, stripControl, truncate } from '../utils/format.js';
 import { partitionCleanable } from '../utils/partition.js';
 import { autoSelect } from '../utils/selection.js';
 import { flushWarnings } from '../utils/warnings.js';
@@ -168,7 +168,8 @@ async function executeCleanup(
   );
   if (allErrors.length > 0) {
     console.log(chalk.yellow(`\n${allErrors.length} warning(s):`));
-    for (const e of allErrors.slice(0, 20)) console.log(`  ${chalk.yellow('⚠')} ${e}`);
+    for (const e of allErrors.slice(0, 20))
+      console.log(`  ${chalk.yellow('⚠')} ${stripControl(e)}`);
     if (allErrors.length > 20) console.log(chalk.grey(`  … and ${allErrors.length - 20} more`));
   }
   console.log();

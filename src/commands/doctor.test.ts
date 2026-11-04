@@ -77,4 +77,20 @@ describe('doctorCommand', () => {
     expect(output).toContain('Not cleanable by this tool');
     expect(output).toContain('Nothing significant to recommend');
   });
+
+  it('strips terminal control characters from labels it prints', async () => {
+    state.reports = [report('docker', 'Evil\u001b[2K\rVM', 20 * GB, false)];
+    await doctorCommand();
+    expect(output).toContain('Evil?[2K?VM');
+    expect(output).not.toContain('\u001b');
+  });
+
+  it('strips terminal control characters from item descriptions it prints', async () => {
+    const r = report('docker', 'Docker VM disk', 20 * GB, false);
+    r.results[0] = { ...r.results[0], description: 'note\u001b[2K\rhere' } as never;
+    state.reports = [r];
+    await doctorCommand();
+    expect(output).toContain('note?[2K?here');
+    expect(output).not.toContain('\u001b');
+  });
 });

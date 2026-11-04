@@ -21,6 +21,7 @@ vi.mock('../utils/exec.js', () => ({
   }),
 }));
 
+import { run } from '../utils/exec.js';
 import { LaunchAgentsScanner } from './launch-agents.js';
 
 async function agent(name: string, json: string): Promise<string> {
@@ -70,5 +71,73 @@ describe('LaunchAgentsScanner.scan', () => {
     await agent('noargs.plist', JSON.stringify({ ProgramArguments: [] }));
     await fsp.writeFile(path.join(dir, 'unreadable.plist'), 'x');
     expect(await ours()).toEqual([]);
+  });
+});
+
+describe('LaunchAgentsScanner.scan when the program cannot be judged', () => {
+  it('keeps agents whose program is relative or sits on an unmounted volume', async () => {
+    await agent('rel.plist', JSON.stringify({ Program: 'bin/tool' }));
+    await agent('vol.plist', JSON.stringify({ Program: '/Volumes/DefinitelyNotMounted/tool' }));
+    expect(await ours()).toEqual([]);
+  });
+});
+
+describe('LaunchAgentsScanner.clean', () => {
+  const bootouts = () =>
+    vi
+      .mocked(run)
+      .mock.calls.map((c) => String(c[0]))
+      .filter((c) => c.startsWith('launchctl bootout'));
+
+  it('unloads a user agent before removing its plist', async () => {
+    vi.mocked(run).mockClear();
+    const file = await agent('gone.plist', JSON.stringify({ Program: '/gone/a' }));
+    const [item] = await ours();
+    if (!item) throw new Error('expected an orphan');
+
+    const { freed, errors } = await new LaunchAgentsScanner().clean([item], false);
+
+    expect(errors).toEqual([]);
+    expect(freed).toBe(item.size);
+    expect(bootouts()).toHaveLength(1);
+    expect(bootouts()[0]).toMatch(/^launchctl bootout gui\/\d+ /);
+    expect(bootouts()[0]).toContain(file);
+    await expect(fsp.stat(file)).rejects.toThrow();
+  });
+
+  it('does not try to unload a plist outside the user LaunchAgents folder', async () => {
+    vi.mocked(run).mockClear();
+    const item = {
+      path: path.join(h.home, 'Library/LaunchDaemons/x.plist'),
+      size: 1,
+      label: 'x',
+      category: 'launch-agents',
+      risk: 'moderate' as const,
+    };
+    await new LaunchAgentsScanner().clean([item], false);
+    expect(bootouts()).toEqual([]);
+  });
+
+  it('never builds a launchctl command from a non-numeric SUDO_UID', async () => {
+    vi.mocked(run).mockClear();
+    vi.stubEnv('SUDO_UID', '1; touch /tmp/pwned');
+    await agent('gone.plist', JSON.stringify({ Program: '/gone/a' }));
+    const [item] = await ours();
+    if (!item) throw new Error('expected an orphan');
+    await new LaunchAgentsScanner().clean([item], false);
+    vi.unstubAllEnvs();
+    expect(bootouts()).toEqual([]);
+  });
+
+  it('unloads nothing and keeps the file on a dry run', async () => {
+    vi.mocked(run).mockClear();
+    const file = await agent('gone.plist', JSON.stringify({ Program: '/gone/a' }));
+    const [item] = await ours();
+    if (!item) throw new Error('expected an orphan');
+
+    await new LaunchAgentsScanner().clean([item], true);
+
+    expect(bootouts()).toEqual([]);
+    await expect(fsp.stat(file)).resolves.toBeDefined();
   });
 });

@@ -67,8 +67,9 @@ node dist/index.js clean --category time-machine
 node dist/index.js clean --category apfs-snapshots
 ```
 
-Only `system-cache` (root-owned `/Library/Caches` entries) needs the whole tool
-to run as root:
+Only the root-owned `/Library` entries need the whole tool to run as root:
+`system-cache` always, and the system parts of `logs`, `diagnostic-reports`,
+`launch-agents` and `music-creation`. Everything else never does. For example:
 
 ```bash
 sudo node dist/index.js scan --category system-cache

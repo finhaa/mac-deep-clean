@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Root detection: when already running under sudo, the "needs sudo" bucket
   is re-classified as "other / likely SIP-protected" to avoid nonsensical
   advice.
-- CI workflow on `macos-latest` running lint, typecheck, test, and build
+- CI workflow on `ubuntu-latest` running lint, typecheck, test, and build
   on push and pull request.
 
 ### Fixed
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added tests for the folder-based scanners (Android, browsers, containers,
   developer caches, iOS backups, JetBrains, Mail, saved state, screen
   recording, user caches), Homebrew, iOS simulators, Docker, `exec`, `fs`,
-  warnings and report partitioning, each proved by mutation.
+  warnings and report partitioning.
 - Added tests for the interactive paths of `clean` and `purge` (pre-ticked
   items, confirmation defaulting to no, dry run, declined and empty picks),
   `scan`, `duplicates` and the command line wiring.

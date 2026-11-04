@@ -22,6 +22,13 @@ describe('purgeRootProblem', () => {
     path.join(home, 'Documents'),
     path.join(home, 'Documents/proj'),
     path.join(home, '.ssh'),
+    '/applications',
+    '/applications/Foo.app',
+    '/OPT/homebrew',
+    '/LIBRARY/Foo',
+    path.join(home, 'library'),
+    path.join(home, 'LIBRARY/Caches/x'),
+    path.join(home, 'documents/proj'),
   ])('refuses %s as a search root', (root) => {
     expect(purgeRootProblem(root)).toEqual(expect.any(String));
   });

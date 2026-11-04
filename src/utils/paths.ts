@@ -64,6 +64,13 @@ function fold(p: string): string {
   return path.resolve(expandHome(p)).toLowerCase();
 }
 
+/** True when `child` is `parent` or lies below it, ignoring case like the default macOS volume. */
+export function isInside(parent: string, child: string): boolean {
+  const root = fold(parent);
+  const target = fold(child);
+  return target === root || target.startsWith(root.endsWith('/') ? root : `${root}/`);
+}
+
 export function isProtectedPath(target: string): boolean {
   const resolved = fold(target);
   if (PROTECTED_EXACT.some((p) => fold(p) === resolved)) return true;

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types.js';
 import { findDirsNamed } from '../utils/find.js';
 import { getSize, isDirectory, pathExists } from '../utils/fs.js';
-import { HOME, findProtectedDescendant, isProtectedPath } from '../utils/paths.js';
+import { HOME, findProtectedDescendant, isInside, isProtectedPath } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
 const SEARCH_ROOTS = [
@@ -97,9 +97,7 @@ export function purgeRootProblem(root: string): string | null {
   if (isProtectedPath(resolved)) return `${resolved} is a protected path`;
   const contained = findProtectedDescendant(resolved);
   if (contained) return `${resolved} contains the protected path ${contained}`;
-  const tree = NON_PROJECT_TREES.find(
-    (t) => resolved === t || resolved.startsWith(`${t}${path.sep}`),
-  );
+  const tree = NON_PROJECT_TREES.find((t) => isInside(t, resolved));
   if (tree) return `${resolved} is inside ${tree}, which holds installed software, not projects`;
   return null;
 }
@@ -157,8 +155,7 @@ export async function isExcluded(target: string, excludes: string[]): Promise<bo
   const real = await realpathOr(target);
   for (const exclude of excludes) {
     const ex = await realpathOr(exclude);
-    if (real === ex || real.startsWith(ex + path.sep) || ex.startsWith(real + path.sep))
-      return true;
+    if (isInside(ex, real) || isInside(real, ex)) return true;
   }
   return false;
 }

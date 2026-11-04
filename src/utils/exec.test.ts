@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { asInvokingUser, commandExists, run } from './exec.js';
+import { asInvokingUser, commandExists, run, shellQuote } from './exec.js';
 
 describe('run', () => {
   it('returns stdout and code 0 on success', async () => {
@@ -56,8 +56,33 @@ describe('asInvokingUser', () => {
     expect(asInvokingUser('brew cleanup')).toBe('brew cleanup');
   });
 
+  it('refuses a SUDO_USER that is not a plain user name instead of building the command', () => {
+    asRoot('rafa; touch /tmp/pwned');
+    expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
+    asRoot('rafa$(id)');
+    expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
+  });
+
   it('re-runs the command as the invoking user under sudo and escapes single quotes', () => {
     asRoot('rafa');
     expect(asInvokingUser("echo 'hi'")).toBe(`sudo -u rafa -H bash -lc 'echo '\\''hi'\\'''`);
+  });
+});
+
+describe('shellQuote', () => {
+  it.each([
+    'plain',
+    "it's",
+    'a "double" quote',
+    '$(touch /tmp/pwned)',
+    '`touch /tmp/pwned`',
+    'semi; colon && pipe | amp &',
+    'new\nline',
+    '$HOME \\ backslash',
+    '-leading-dash',
+  ])('hands %j to the command exactly as given', async (value) => {
+    const { stdout, code } = await run(`printf %s ${shellQuote(value)}`);
+    expect(code).toBe(0);
+    expect(stdout).toBe(value);
   });
 });

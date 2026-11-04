@@ -23,6 +23,17 @@ afterEach(async () => {
   await fsp.rm(root, { recursive: true, force: true });
 });
 
+describe('getSize with a hostile directory name', () => {
+  it('measures a directory whose name holds quotes, $() and backticks without running any of it', async () => {
+    const dir = path.join(root, 'it\'s "x" $(touch pwned) `touch pwned2`');
+    await fsp.mkdir(dir);
+    await fsp.writeFile(path.join(dir, 'f'), Buffer.alloc(8192));
+    expect(await getSize(dir)).toBeGreaterThanOrEqual(8192);
+    expect(await pathExists(path.join(root, 'pwned'))).toBe(false);
+    expect(await pathExists(path.join(root, 'pwned2'))).toBe(false);
+  });
+});
+
 describe('a symlinked parent component', () => {
   it('cannot lead safeRemove into a protected path', async () => {
     await fsp.symlink('/usr', path.join(root, 'link'));

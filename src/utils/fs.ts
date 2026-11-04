@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { run } from './exec.js';
+import { run, shellQuote } from './exec.js';
 import { assertSafeToDelete } from './paths.js';
 import { addPermissionWarning } from './warnings.js';
 
@@ -41,8 +41,7 @@ export async function getSize(p: string): Promise<number> {
   } catch {
     return 0;
   }
-  const escaped = p.replace(/(["\\$`])/g, '\\$1');
-  const { stdout, stderr, code } = await run(`du -sk "${escaped}"`, {
+  const { stdout, stderr, code } = await run(`du -sk ${shellQuote(p)}`, {
     timeout: SIZE_TIMEOUT_MS,
   });
   if (code !== 0 && !stdout.trim()) {

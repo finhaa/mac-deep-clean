@@ -9,6 +9,13 @@ export interface ExecResult {
   code: number;
 }
 
+/** Single-quotes `value` for a shell command line; nothing inside single quotes is interpreted. */
+export function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+const USER_NAME = /^[A-Za-z0-9._-]+$/;
+
 export async function run(
   command: string,
   options: { timeout?: number; cwd?: string } = {},
@@ -45,6 +52,6 @@ export function asInvokingUser(command: string): string {
   const sudoUser = process.env.SUDO_USER;
   const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
   if (!isRoot || !sudoUser || sudoUser === 'root') return command;
-  const escaped = command.replace(/'/g, `'\\''`);
-  return `sudo -u ${sudoUser} -H bash -lc '${escaped}'`;
+  if (!USER_NAME.test(sudoUser)) throw new Error(`SUDO_USER is not a plain user name: ${sudoUser}`);
+  return `sudo -u ${sudoUser} -H bash -lc ${shellQuote(command)}`;
 }

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
-import { run } from '../utils/exec.js';
+import { run, shellQuote } from '../utils/exec.js';
 import { isDirectory, listDir, pathExists, safeRemove } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
@@ -66,8 +66,7 @@ async function bootOut(plistPath: string): Promise<void> {
   if (!plistPath.startsWith(path.join(HOME, 'Library/LaunchAgents') + path.sep)) return;
   const uid = process.env.SUDO_UID ?? String(process.getuid?.() ?? '');
   if (!/^\d+$/.test(uid)) return;
-  const escaped = plistPath.replace(/(["\\$`])/g, '\\$1');
-  await run(`launchctl bootout gui/${uid} "${escaped}"`, { timeout: 5000 });
+  await run(`launchctl bootout gui/${uid} ${shellQuote(plistPath)}`, { timeout: 5000 });
 }
 
 const LAUNCHD_PATH = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
@@ -95,10 +94,12 @@ export async function canJudgeProgram(
 }
 
 async function readPlistProgram(plistPath: string): Promise<string | null> {
-  const escaped = plistPath.replace(/(["\\$`])/g, '\\$1');
-  const { stdout, code } = await run(`plutil -convert json -o - "${escaped}" 2>/dev/null`, {
-    timeout: 5000,
-  });
+  const { stdout, code } = await run(
+    `plutil -convert json -o - ${shellQuote(plistPath)} 2>/dev/null`,
+    {
+      timeout: 5000,
+    },
+  );
   if (code !== 0 || !stdout.trim()) return null;
   try {
     const data = JSON.parse(stdout) as {

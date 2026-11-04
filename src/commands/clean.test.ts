@@ -93,7 +93,10 @@ describe('cleanCommand --yes', () => {
 });
 
 describe('cleanCommand --yes with irreversible categories', () => {
-  const backups = () => fakeScanner('ios-backups', 'moderate', [item('ios-backups', 'moderate')]);
+  const backups = () =>
+    fakeScanner('ios-backups', 'moderate', [
+      { ...item('ios-backups', 'moderate'), irreversible: true },
+    ]);
 
   it('does not delete them for a broad --risky', async () => {
     const b = backups();

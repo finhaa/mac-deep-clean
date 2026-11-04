@@ -1,6 +1,12 @@
-import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// The classification reads HOME when paths.js loads, so pin it before any import.
+const HOME = vi.hoisted(() => {
+  process.env.HOME = '/Users/testuser';
+  return '/Users/testuser';
+});
+
 import { addPermissionWarning, flushWarnings, hasWarnings } from './warnings.js';
 
 const MB = 1024 * 1024;
@@ -8,17 +14,33 @@ const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
 
 describe('permission warnings', () => {
   it('stay quiet below the noise threshold', () => {
-    addPermissionWarning(path.join(os.homedir(), 'Library/Mail'), 99 * MB);
+    addPermissionWarning(path.join(HOME, 'Library/Mail'), 99 * MB);
     expect(hasWarnings()).toBe(true);
     expect(flushWarnings()).toEqual([]);
     expect(hasWarnings()).toBe(false);
   });
 
   it('point to Full Disk Access for ~/Library paths', () => {
-    addPermissionWarning(path.join(os.homedir(), 'Library/Mail'), 150 * MB);
+    addPermissionWarning(path.join(HOME, 'Library/Mail'), 150 * MB);
     const [message] = flushWarnings();
     expect(message).toContain('Full Disk Access');
     expect(message).toContain('~/Library/Mail');
+  });
+
+  it('classify by whole folders, not by a shared name prefix', () => {
+    addPermissionWarning(`${HOME}ael/Library/Mail`, 150 * MB);
+    addPermissionWarning('/LibraryX/cache', 150 * MB);
+    addPermissionWarning('/usrlocal/x', 150 * MB);
+    const messages = flushWarnings();
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('3 other path(s) were unreadable');
+  });
+
+  it('show a sibling of HOME in full instead of cutting it to ~...', () => {
+    addPermissionWarning(`${HOME}ael/data`, 150 * MB);
+    const [message] = flushWarnings();
+    expect(message).toContain(`${HOME}ael/data`);
+    expect(message).not.toContain('~ael');
   });
 
   it.skipIf(isRoot)('point to sudo for system paths', () => {

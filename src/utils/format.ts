@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { Risk } from '../types.js';
+import { HOME, isInside } from './paths.js';
 
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
 
@@ -41,4 +42,9 @@ export function truncate(str: string, max: number): string {
   const clean = stripControl(str);
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max - 1)}…`;
+}
+
+/** `~/x` for a path inside HOME; a sibling such as `<HOME>ael` is not inside it and stays as it is. */
+export function tildify(p: string): string {
+  return isInside(HOME, p) ? `~${p.slice(HOME.length)}` : p;
 }

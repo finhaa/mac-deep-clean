@@ -14,11 +14,13 @@ vi.mock('ora', () => {
   return { default: () => spinner };
 });
 vi.mock('@inquirer/prompts', () => ({ checkbox: vi.fn(), confirm: vi.fn() }));
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>();
+vi.mock('../utils/fs.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/fs.js')>();
   const rm = vi.fn(async () => {});
   state.rm = rm;
-  return { ...actual, rm };
+  // The real guard runs first, so a protected path never reaches the recorded delete.
+  const safeRemove = async (target: string) => rm(await actual.resolveDeletionTarget(target));
+  return { ...actual, safeRemove };
 });
 vi.mock('../scanners/project-artifacts.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../scanners/project-artifacts.js')>();

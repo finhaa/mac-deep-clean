@@ -71,6 +71,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   report on their own, so no space is counted or deleted twice.
 - `doctor` no longer counts the Docker Desktop VM disk (or any item this tool
   cannot clean) in its recommendations and total; it lists those separately.
+- Which items `clean --yes` never picks is now a flag on the item (`irreversible`)
+  set by the scanner, not a list of five names. JetBrains caches (local history),
+  Xcode Archives, Android AVD images, `docker system prune` and the Electron
+  `--deep` state items carry it too, so `--yes --risky` skips them unless their own `--category` is given.
+- `doctor` measures free space against used plus free, so a nearly full volume no
+  longer reads as having plenty of room because of the APFS container size.
+- `purge` deletes through the same guarded `safeRemove` as every scanner, and
+  `purge --path` is checked both as spelled and after resolving symlinks.
+- The protected list now also covers `~/Library/Mobile Documents`, `~/Library/Mail`,
+  `~/Library/Messages`, `/etc`, `/private/etc`, `/Applications`, another user's home
+  folder itself and the real path of `HOME`.
+- A scanner error is stripped of terminal control characters before it reaches the
+  spinner, like every other label.
+- Test runs refuse every delete outside the temp dir: `rm`, `rmdir`, `unlink`,
+  `truncate`, `cp` and `rename`, in promise, callback and sync form, through named
+  imports and through a symlinked parent.
+- Added tests that pin the production defaults every other test overrides, the risk
+  tier of every scanner, the exact deletion targets of the browser, wallpaper,
+  developer cache, music and Electron scanners, the symlinked `--exclude` and target
+  cases of `purge`, and that no two scanners offer the same or a nested path.
 - Added tests for the folder-based scanners (Android, browsers, containers,
   developer caches, iOS backups, JetBrains, Mail, saved state, screen
   recording, user caches), Homebrew, iOS simulators, Docker, `exec`, `fs`,

@@ -2,15 +2,15 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-const h = vi.hoisted(() => ({ home: '' }));
-
-vi.mock('../utils/paths.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../utils/paths.js')>();
-  const os = await import('node:os');
+// The protected list is built from HOME when the module loads, so HOME is set before any import.
+const h = await vi.hoisted(async () => {
   const fs = await import('node:fs');
+  const os = await import('node:os');
   const nodePath = await import('node:path');
-  h.home = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'mdc-root-check-'));
-  return { ...actual, HOME: h.home };
+  const original = process.env.HOME;
+  const home = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'mdc-root-check-'));
+  process.env.HOME = home;
+  return { home, original };
 });
 
 import { checkPurgeRoot } from './project-artifacts.js';
@@ -18,6 +18,7 @@ import { checkPurgeRoot } from './project-artifacts.js';
 const home = (...parts: string[]) => path.join(h.home, ...parts);
 
 afterAll(async () => {
+  if (h.original !== undefined) process.env.HOME = h.original;
   await fsp.rm(h.home, { recursive: true, force: true });
 });
 

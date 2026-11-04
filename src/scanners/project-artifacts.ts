@@ -109,9 +109,8 @@ export function purgeRootProblem(root: string): string | null {
 export async function checkPurgeRoot(
   root: string,
 ): Promise<{ real: string; problem: string | null }> {
-  const resolved = path.resolve(root);
-  const real = await fs.realpath(resolved);
-  return { real, problem: purgeRootProblem(resolved) ?? purgeRootProblem(real) };
+  const real = await fs.realpath(root);
+  return { real, problem: purgeRootProblem(root) ?? purgeRootProblem(real) };
 }
 
 export async function resolveSearchRoots(explicit: string[] | null): Promise<string[]> {

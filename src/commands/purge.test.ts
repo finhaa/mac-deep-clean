@@ -181,4 +181,15 @@ describe('purgeCommand interactive', () => {
       .join('\n');
     expect(out).toContain('EACCES');
   });
+
+  it('strips terminal control characters from a deletion error', async () => {
+    rm().mockRejectedValueOnce(new Error('bad\u001b[2K\rname'));
+    await purgeCommand({});
+    const out = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+    expect(out).toContain('bad?[2K?name');
+    expect(out).not.toContain('\u001b');
+  });
 });

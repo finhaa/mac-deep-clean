@@ -4,7 +4,7 @@ import ora from 'ora';
 import { runScanners } from '../runner.js';
 import { getAllScanners } from '../scanners/index.js';
 import { run } from '../utils/exec.js';
-import { colorRisk, colorSize, formatBytes } from '../utils/format.js';
+import { colorRisk, colorSize, formatBytes, stripControl } from '../utils/format.js';
 import { getSize, pathExists } from '../utils/fs.js';
 import { partitionCleanable } from '../utils/partition.js';
 import { HOME } from '../utils/paths.js';
@@ -98,8 +98,8 @@ export async function doctorCommand(): Promise<void> {
   if (infoItems.length > 0) {
     console.log(`\n${chalk.grey('ℹ Not cleanable by this tool:')}`);
     for (const item of infoItems) {
-      console.log(`  ${chalk.grey('•')} ${item.label} ${colorSize(item.size)}`);
-      if (item.description) console.log(`    ${chalk.grey(item.description)}`);
+      console.log(`  ${chalk.grey('•')} ${stripControl(item.label)} ${colorSize(item.size)}`);
+      if (item.description) console.log(`    ${chalk.grey(stripControl(item.description))}`);
     }
   }
 

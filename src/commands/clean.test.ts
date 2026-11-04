@@ -242,6 +242,13 @@ describe('cleanCommand reporting', () => {
     expect(logged()).toContain('Done.');
   });
 
+  it('strips terminal control characters from the errors it prints', async () => {
+    safe.clean.mockResolvedValue({ freed: 0, errors: ['/x/\u001b[2K\rname: EACCES'] });
+    await cleanCommand({ yes: true });
+    expect(logged()).toContain('/x/?[2K?name: EACCES');
+    expect(logged()).not.toContain('\u001b');
+  });
+
   it('skips an item whose category no scanner owns instead of crashing', async () => {
     const stray = fakeScanner('stray', 'safe', [item('ghost', 'safe', 'ghost-item')]);
     vi.mocked(getAllScanners).mockReturnValue([stray, safe] as never);

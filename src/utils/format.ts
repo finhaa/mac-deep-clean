@@ -29,7 +29,16 @@ export function colorSize(bytes: number): string {
   return chalk.white(s);
 }
 
+// File names and plist content are attacker-controlled text: a raw ESC or CR could overwrite the review line.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
+
+export function stripControl(str: string): string {
+  return str.replace(CONTROL_CHARS, '?');
+}
+
 export function truncate(str: string, max: number): string {
-  if (str.length <= max) return str;
-  return `${str.slice(0, max - 1)}…`;
+  const clean = stripControl(str);
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max - 1)}…`;
 }

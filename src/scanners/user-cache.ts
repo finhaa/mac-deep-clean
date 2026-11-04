@@ -22,6 +22,7 @@ const COVERED_ELSEWHERE = new Set([
   'pre-commit',
   'Composer',
   'Bazel',
+  'go-build',
   // Downloaded browser binaries, not a cache: deleting forces a reinstall.
   'ms-playwright',
   'ms-playwright-mcp',

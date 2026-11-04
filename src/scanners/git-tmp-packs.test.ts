@@ -187,6 +187,54 @@ describe('GitTmpPacksScanner.clean', () => {
   });
 });
 
+describe('GitTmpPacksScanner.clean refuses what is not a git pack folder', () => {
+  const item = (file: string) => ({
+    path: file,
+    size: 5,
+    label: 'x',
+    category: 'git-tmp-packs',
+    risk: 'moderate' as const,
+  });
+
+  it('keeps a tmp_pack file in objects/pack of a folder that is not named .git', async () => {
+    const lookalike = await writeAged(path.join(root, 'repo/notgit/objects/pack/tmp_pack_x'), 60);
+
+    const { freed, errors } = await scanner().clean([item(lookalike)], false);
+
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    await expect(fs.stat(lookalike)).resolves.toBeDefined();
+  });
+
+  it('keeps a file reached through a link that does not look like a pack folder', async () => {
+    const real = await writeAged(packFile('repo', 'tmp_pack_linked'), 60);
+    const link = path.join(root, 'link');
+    await fs.symlink(path.dirname(real), link);
+
+    const { freed, errors } = await scanner().clean(
+      [item(path.join(link, 'tmp_pack_linked'))],
+      false,
+    );
+
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    await expect(fs.stat(real)).resolves.toBeDefined();
+  });
+
+  it('leaves a folder named like a tmp_pack file alone without reporting an error', async () => {
+    const folder = packFile('repo', 'tmp_pack_folder');
+    await fs.mkdir(folder, { recursive: true });
+    const old = new Date(Date.now() - 60 * MINUTE_MS);
+    await fs.utimes(folder, old, old);
+
+    const { freed, errors } = await scanner().clean([item(folder)], false);
+
+    expect(freed).toBe(0);
+    expect(errors).toEqual([]);
+    await expect(fs.stat(folder)).resolves.toBeDefined();
+  });
+});
+
 describe('GitTmpPacksScanner.clean safety guard', () => {
   it('refuses a tmp_pack path inside a protected folder even though the name matches', async () => {
     const protectedPack = path.join(os.homedir(), '.ssh/repo/.git/objects/pack/tmp_pack_abc123');

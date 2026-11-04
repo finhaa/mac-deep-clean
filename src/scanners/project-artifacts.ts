@@ -54,12 +54,14 @@ export class ProjectArtifactsScanner extends BaseScanner {
   searchRoots: string[] | null = null;
   excludeRoots: string[] = [];
   protectedDirs: string[] | null = null;
+  // Where the running tool lives; its own node_modules is found from here.
+  ownDir: string = path.dirname(fileURLToPath(import.meta.url));
 
   async scan(): Promise<ScanResult[]> {
     const roots = await resolveSearchRoots(this.searchRoots);
     if (roots.length === 0) return [];
 
-    const protectedDirs = this.protectedDirs ?? (await defaultProtectedDirs());
+    const protectedDirs = this.protectedDirs ?? (await defaultProtectedDirs(this.ownDir));
     const skip = [...this.excludeRoots, ...protectedDirs];
     const results: ScanResult[] = [];
 
@@ -176,8 +178,8 @@ export async function findOwnNodeModules(startDir: string): Promise<string | nul
   }
 }
 
-async function defaultProtectedDirs(): Promise<string[]> {
-  const own = await findOwnNodeModules(path.dirname(fileURLToPath(import.meta.url)));
+async function defaultProtectedDirs(startDir: string): Promise<string[]> {
+  const own = await findOwnNodeModules(startDir);
   return own ? [own] : [];
 }
 

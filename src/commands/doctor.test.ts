@@ -21,6 +21,7 @@ vi.mock('../utils/fs.js', () => ({
 }));
 
 import type { ScannerReport } from '../types.js';
+import { run } from '../utils/exec.js';
 import { doctorCommand } from './doctor.js';
 
 const GB = 1024 ** 3;
@@ -92,5 +93,19 @@ describe('doctorCommand', () => {
     await doctorCommand();
     expect(output).toContain('note?[2K?here');
     expect(output).not.toContain('\u001b');
+  });
+
+  it('samples the Data volume on macOS, since the sealed system volume at / holds almost no user data', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
+    state.reports = [];
+    await doctorCommand();
+    expect(vi.mocked(run).mock.calls.map((c) => c[0])).toContain('df -k /System/Volumes/Data');
+  });
+
+  it('samples / elsewhere', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux');
+    state.reports = [];
+    await doctorCommand();
+    expect(vi.mocked(run).mock.calls.map((c) => c[0])).toContain('df -k /');
   });
 });

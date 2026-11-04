@@ -21,6 +21,12 @@ describe('README --yes', () => {
   });
 });
 
+describe('README root advice', () => {
+  it('does not say only system-cache needs a root run', () => {
+    expect(read('README.md')).not.toMatch(/Only `system-cache`/);
+  });
+});
+
 describe('README sudo advice', () => {
   it('does not run the whole tool as root for snapshot categories that call sudo themselves', () => {
     expect(read('README.md')).not.toMatch(
@@ -33,6 +39,16 @@ describe('CHANGELOG', () => {
   it('states the real number of scanners', () => {
     const count = getAllScanners().length;
     expect(read('CHANGELOG.md')).toContain(`Initial ${count}-scanner suite`);
+  });
+
+  it('names the CI runner the workflow really uses', () => {
+    const runner = /runs-on:\s*(\S+)/.exec(read('.github/workflows/ci.yml'))?.[1];
+    expect(runner).toBeDefined();
+    expect(read('CHANGELOG.md')).toContain(`CI workflow on \`${runner}\``);
+  });
+
+  it('does not claim a proof by mutation that no file records', () => {
+    expect(read('CHANGELOG.md')).not.toMatch(/proved by mutation/);
   });
 
   it('does not claim docker cleanup removes volumes', () => {

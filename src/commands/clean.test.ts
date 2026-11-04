@@ -269,3 +269,21 @@ describe('cleanCommand reporting', () => {
     expect(logged()).toContain('Nothing to clean');
   });
 });
+
+describe('cleanCommand output', () => {
+  it('prints no control characters from the description of a not cleanable item', async () => {
+    const info: ScanResult = {
+      ...item('info-cat', 'safe', 'vm disk'),
+      cleanable: false,
+      description: 'vm\u001b[2Jz',
+    };
+    vi.mocked(getAllScanners).mockReturnValue([fakeScanner('info-cat', 'safe', [info])] as never);
+    await cleanCommand({ yes: true });
+    const out = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+    expect(out).toContain('vm');
+    expect(out).not.toContain('\u001b[2J');
+  });
+});

@@ -35,6 +35,13 @@ describe('permission warnings', () => {
     expect(message).toContain('(+2 more)');
   });
 
+  it('print a path with control characters as plain text', () => {
+    addPermissionWarning('/Volumes/disk/evil\u001b[2Jname', 150 * MB);
+    const [message] = flushWarnings();
+    expect(message).toContain('evil');
+    expect(message).not.toContain('\u001b[2J');
+  });
+
   it('are cleared once flushed', () => {
     addPermissionWarning('/Volumes/disk/x', 500 * MB);
     flushWarnings();

@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { runScanners } from '../runner.js';
 import { getAllScanners } from '../scanners/index.js';
-import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
+import { colorRisk, colorSize, formatBytes, stripControl, truncate } from '../utils/format.js';
 import { hasContent, partitionCleanable } from '../utils/partition.js';
 import { flushWarnings } from '../utils/warnings.js';
 
@@ -72,14 +72,15 @@ export async function scanCommand(
       console.log(
         `  ${chalk.grey('•')} ${truncate(item.label, 50).padEnd(52)} ${colorSize(item.size)}`,
       );
-      if (item.description) console.log(`    ${chalk.grey(item.description)}`);
+      if (item.description) console.log(`    ${chalk.grey(stripControl(item.description))}`);
     }
   }
 
   const errored = reports.filter((r) => r.error);
   if (errored.length > 0) {
     console.log(chalk.yellow('\nErrors:'));
-    for (const r of errored) console.log(`  ${chalk.yellow('⚠')} ${r.name}: ${r.error}`);
+    for (const r of errored)
+      console.log(`  ${chalk.yellow('⚠')} ${r.name}: ${stripControl(r.error ?? '')}`);
   }
 
   const warnings = flushWarnings();

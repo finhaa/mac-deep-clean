@@ -1,5 +1,6 @@
 import type { CleanResult, ScanResult } from '../types.js';
 import { commandExists, run } from '../utils/exec.js';
+import { stripControl } from '../utils/format.js';
 import { BaseScanner } from './base-scanner.js';
 
 // The root volume is the sealed, read-only system snapshot; user data lives on the Data volume.
@@ -40,11 +41,6 @@ function deletable(output: string): Snapshot[] {
   );
 }
 
-// A snapshot name comes from the disk and is shown to the user: no control characters.
-function printable(name: string): string {
-  return [...name].map((c) => (c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 ? '?' : c)).join('');
-}
-
 export class ApfsSnapshotsScanner extends BaseScanner {
   readonly name = 'APFS Snapshots';
   readonly category = 'apfs-snapshots';
@@ -62,7 +58,7 @@ export class ApfsSnapshotsScanner extends BaseScanner {
       path: `apfs:snapshot:${s.uuid}`,
       size: 0,
       virtual: true,
-      label: `APFS snapshot "${printable(s.name)}" on ${VOLUME}`,
+      label: `APFS snapshot "${stripControl(s.name)}" on ${VOLUME}`,
       category: this.category,
       risk: 'risky' as const,
       description: `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${s.uuid} (requires sudo)`,

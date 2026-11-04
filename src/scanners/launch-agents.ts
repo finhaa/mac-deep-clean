@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
 import { run, shellQuote } from '../utils/exec.js';
-import { isDirectory, listDir, pathExists, safeRemove } from '../utils/fs.js';
+import { isDirectory, listDir, safeRemove } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -69,11 +69,22 @@ async function bootOut(plistPath: string): Promise<void> {
   await run(`launchctl bootout gui/${uid} ${shellQuote(plistPath)}`, { timeout: 5000 });
 }
 
+// Only "no such file" proves a program is gone: a folder we may not enter hides it, it does not remove it.
+async function mayExist(p: string): Promise<boolean> {
+  try {
+    await fs.lstat(p);
+    return true;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    return code !== 'ENOENT' && code !== 'ENOTDIR';
+  }
+}
+
 const LAUNCHD_PATH = ['/usr/bin', '/bin', '/usr/sbin', '/sbin'];
 
 export async function programResolves(
   program: string,
-  exists: (p: string) => Promise<boolean> = pathExists,
+  exists: (p: string) => Promise<boolean> = mayExist,
 ): Promise<boolean> {
   if (program.includes('/')) return exists(program);
   for (const dir of LAUNCHD_PATH) {
@@ -86,7 +97,7 @@ export async function programResolves(
 // is not missing, only out of reach: neither is evidence of an orphan.
 export async function canJudgeProgram(
   program: string,
-  exists: (p: string) => Promise<boolean> = pathExists,
+  exists: (p: string) => Promise<boolean> = mayExist,
 ): Promise<boolean> {
   if (program.includes('/') && !path.isAbsolute(program)) return false;
   const volume = /^\/Volumes\/[^/]+/.exec(program)?.[0];

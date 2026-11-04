@@ -83,6 +83,32 @@ describe('LaunchAgentsScanner.scan when the program cannot be judged', () => {
   });
 });
 
+describe('LaunchAgentsScanner.scan when the program cannot be read', () => {
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+
+  it.skipIf(isRoot)('keeps an agent whose program sits in a folder it may not enter', async () => {
+    const locked = path.join(h.home, 'locked');
+    await fsp.mkdir(locked, { recursive: true });
+    await fsp.writeFile(path.join(locked, 'tool'), 'x');
+    await agent('locked.plist', JSON.stringify({ Program: path.join(locked, 'tool') }));
+    await fsp.chmod(locked, 0o000);
+    try {
+      expect(await ours()).toEqual([]);
+    } finally {
+      await fsp.chmod(locked, 0o755);
+    }
+  });
+});
+
+describe('LaunchAgentsScanner.scan when the program path runs through a file', () => {
+  it('reports it, since nothing can exist below a regular file', async () => {
+    const plain = path.join(h.home, 'plain-file');
+    await fsp.writeFile(plain, 'x');
+    const orphan = await agent('below-file.plist', JSON.stringify({ Program: `${plain}/tool` }));
+    expect((await ours()).map((r) => r.path)).toEqual([orphan]);
+  });
+});
+
 describe('LaunchAgentsScanner.clean', () => {
   const bootouts = () =>
     vi

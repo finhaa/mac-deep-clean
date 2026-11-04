@@ -333,7 +333,8 @@ describe('cleanCommand terminal safety', () => {
     vi.mocked(getAllScanners).mockReturnValue([fakeScanner('safe-cat', 'safe', [info])] as never);
     await cleanCommand({ yes: true, dryRun: true });
     expect(logged()).toContain('Evil?[2K?Label');
-    expect(logged()).not.toMatch(/\u001b\[2K|\r/);
+    expect(logged()).not.toContain('\u001b[2K');
+    expect(logged()).not.toContain('\r');
   });
 
   it('strips control characters from a label in the picker', async () => {
@@ -347,7 +348,8 @@ describe('cleanCommand terminal safety', () => {
       choices: { name: string }[];
     };
     expect(choices[0]?.name).toContain('Evil?[2K?Label');
-    expect(choices[0]?.name).not.toMatch(/\u001b\[2K|\r/);
+    expect(choices[0]?.name).not.toContain('\u001b[2K');
+    expect(choices[0]?.name).not.toContain('\r');
   });
 
   it('strips control characters from the error a scanner throws, on the spinner and in the report', async () => {
@@ -356,7 +358,9 @@ describe('cleanCommand terminal safety', () => {
     vi.mocked(getAllScanners).mockReturnValue([broken] as never);
     await cleanCommand({ yes: true });
     expect(spin.failed.join('\n')).toContain('boomEvil?[2K?Label');
-    expect(spin.failed.join('\n')).not.toMatch(/\u001b\[2K|\r/);
-    expect(logged()).not.toMatch(/\u001b\[2K|\r/);
+    expect(spin.failed.join('\n')).not.toContain('\u001b[2K');
+    expect(spin.failed.join('\n')).not.toContain('\r');
+    expect(logged()).not.toContain('\u001b[2K');
+    expect(logged()).not.toContain('\r');
   });
 });

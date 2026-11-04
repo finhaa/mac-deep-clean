@@ -31,6 +31,7 @@ export class ScreenRecordingScanner extends BaseScanner {
         label: `${name} data`,
         category: this.category,
         risk: this.risk,
+        irreversible: true,
         description: `${name} application data (may include recordings)`,
       });
     }

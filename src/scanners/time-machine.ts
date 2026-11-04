@@ -27,6 +27,7 @@ export class TimeMachineScanner extends BaseScanner {
       label: `Time Machine local snapshot ${date}`,
       category: this.category,
       risk: this.risk,
+      irreversible: true,
       description: `sudo tmutil deletelocalsnapshots ${date} (requires sudo)`,
     }));
   }

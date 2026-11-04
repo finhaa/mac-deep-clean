@@ -136,6 +136,19 @@ describe('IosSimulatorsScanner', () => {
     ]);
   });
 
+  it('marks only the Archives irreversible', async () => {
+    existsMock.mockResolvedValue(true);
+    await put('Library/Developer/CoreSimulator/Devices', 2 * MB);
+    await put('Library/Developer/Xcode/DerivedData', 3 * MB);
+    await put('Library/Developer/Xcode/Archives', 4 * MB);
+    const results = await new IosSimulatorsScanner().scan();
+    expect(results.map((r) => [path.basename(r.path), r.irreversible ?? false])).toEqual([
+      ['xcrun:simctl:unavailable', false],
+      ['DerivedData', false],
+      ['Archives', true],
+    ]);
+  });
+
   it('deletes unavailable simulators through simctl and DerivedData through the guard', async () => {
     const derived = await put('Library/Developer/Xcode/DerivedData', 3 * MB);
     runMock.mockResolvedValue(ok());

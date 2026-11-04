@@ -17,7 +17,8 @@ describe('README', () => {
 describe('README --yes', () => {
   it('says what --yes does with snapshots and other irreversible categories', () => {
     const readme = read('README.md');
-    expect(readme).toContain('With `--yes` nothing is picked for you');
+    expect(readme).toContain('With `--yes` only safe items are picked');
+    expect(readme).not.toContain('nothing is picked for you');
   });
 });
 

@@ -1,0 +1,130 @@
+
+ RUN  v4.1.12 /private/tmp/claude-501/mdc-f3
+
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+Usage: mac-deep-clean [options] [command]
+
+CLI that cleans what other Mac cleaners miss
+
+Options:
+  -V, --version                output the version number
+  -h, --help                   display help for command
+
+Commands:
+  scan [options]               Scan your Mac and report reclaimable space
+  clean [options]              Interactively clean caches and reclaim space
+  doctor                       Full system disk diagnostic with recommendations
+  purge [options]              Find and delete project build artifacts
+                               (node_modules, .venv, target, Pods…)
+  duplicates [options] <path>  Find duplicate files (read-only report, no
+                               deletion)
+  help [command]               display help for command
+ ❯ src/commands/clean.test.ts (27 tests | 1 failed) 441ms
+     × does not delete them for a broad --risky 23ms
+ ❯ src/utils/fs.test.ts (14 tests | 1 failed) 7879ms
+     × cannot lead clearDir into a protected path 5074ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commands/clean.test.ts > cleanCommand --yes with irreversible categories > does not delete them for a broad --risky
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      Array [
+        Object {
+          "category": "ios-backups",
+          "label": "ios-backups-item",
+          "path": "/tmp/mdc-wiring/ios-backups-item",
+          "risk": "moderate",
+          "size": 1000,
+        },
+      ],
+      false,
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/commands/clean.test.ts:102:25
+    100|     vi.mocked(getAllScanners).mockReturnValue([safe, b] as never);
+    101|     await cleanCommand({ yes: true, risky: true });
+    102|     expect(b.clean).not.toHaveBeenCalled();
+       |                         ^
+    103|     expect(safe.clean).toHaveBeenCalledTimes(1);
+    104|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/utils/fs.test.ts > a symlinked parent component > cannot lead clearDir into a protected path
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/utils/fs.test.ts:46:3
+     44|   });
+     45|
+     46|   it('cannot lead clearDir into a protected path', async () => {
+       |   ^
+     47|     await fsp.symlink('/usr', path.join(root, 'link'));
+     48|     const rm = vi.spyOn(fsp, 'rm').mockResolvedValue();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 39 passed (41)
+      Tests  2 failed | 461 passed (463)
+   Start at  15:21:31
+   Duration  13.62s (transform 16.61s, setup 3.66s, import 31.18s, tests 51.63s, environment 14ms)
+

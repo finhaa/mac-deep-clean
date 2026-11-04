@@ -26,6 +26,7 @@ export class IosBackupsScanner extends BaseScanner {
         label: `iOS backup ${uuid.slice(0, 16)}…`,
         category: this.category,
         risk: this.risk,
+        irreversible: true,
         description: 'iOS/iPadOS device backup — deletion is permanent',
       });
     }

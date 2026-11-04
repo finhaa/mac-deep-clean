@@ -41,6 +41,7 @@ export class AndroidScanner extends BaseScanner {
           label: `AVD: ${name}`,
           category: this.category,
           risk: this.risk,
+          irreversible: true,
           description: 'Android Virtual Device image',
         });
       }

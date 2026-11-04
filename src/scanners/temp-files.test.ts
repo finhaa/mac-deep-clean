@@ -2,6 +2,19 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const seen = vi.hoisted(() => ({ commands: [] as string[] }));
+vi.mock('../utils/exec.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/exec.js')>();
+  return {
+    ...actual,
+    run: async (command: string, options?: Parameters<typeof actual.run>[1]) => {
+      seen.commands.push(command);
+      return actual.run(command, options);
+    },
+  };
+});
+
 import { TempFilesScanner, tempCandidates } from './temp-files.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -32,6 +45,7 @@ describe('tempCandidates', () => {
     '/Users/me/Documents/T',
     '/var/folders/ab/cd',
     '/var/folders/ab/cd/T/sub',
+    '/Users/me/var/folders/ab/cd/T',
     '/',
   ])('does not trust %s just because $TMPDIR points there', (dirPath) => {
     expect(tempCandidates(dirPath)).toEqual([]);
@@ -147,5 +161,54 @@ describe('TempFilesScanner', () => {
     expect(errors).toEqual([]);
     expect(freed).toBeGreaterThan(0);
     await expect(fs.stat(oldFile)).rejects.toThrow();
+  });
+
+  const result = (p: string) => ({
+    path: p,
+    size: 1,
+    label: 'test',
+    category: 'temp-files',
+    risk: 'moderate' as const,
+  });
+  const age = async (file: string, ms: number) => {
+    const when = new Date(Date.now() - ms);
+    await fs.utimes(file, when, when);
+  };
+
+  it('deletes files older than a day and keeps younger ones', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    const older = path.join(dir, 'older.bin');
+    const younger = path.join(dir, 'younger.bin');
+    await fs.writeFile(older, 'x');
+    await fs.writeFile(younger, 'x');
+    await age(older, 30 * 60 * 60 * 1000);
+    await age(younger, 20 * 60 * 60 * 1000);
+
+    const { errors } = await new TempFilesScanner().clean([result(dir)], false);
+
+    expect(errors).toEqual([]);
+    await expect(fs.stat(older)).rejects.toThrow();
+    await expect(fs.stat(younger)).resolves.toBeDefined();
+  });
+
+  it('removes files only, never an old folder', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    const folder = path.join(dir, 'empty-old-folder');
+    await fs.mkdir(folder);
+    await age(folder, 3 * DAY_MS);
+
+    await new TempFilesScanner().clean([result(dir)], false);
+
+    await expect(fs.stat(folder)).resolves.toBeDefined();
+  });
+
+  it('only touches files owned by the account that runs it', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    seen.commands.length = 0;
+
+    await new TempFilesScanner().clean([result(dir)], false);
+
+    const find = seen.commands.find((c) => c.startsWith('find '));
+    expect(find).toContain(`-user '${os.userInfo().username}'`);
   });
 });

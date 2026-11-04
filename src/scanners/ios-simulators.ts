@@ -25,7 +25,7 @@ export class IosSimulatorsScanner extends BaseScanner {
             label: 'Unavailable iOS simulators',
             category: this.category,
             risk: 'safe',
-            description: 'xcrun simctl delete unavailable',
+            description: 'xcrun simctl delete unavailable; frees at most this size',
           });
         }
       }

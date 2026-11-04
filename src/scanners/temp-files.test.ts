@@ -18,6 +18,30 @@ describe('tempCandidates', () => {
     expect(candidates.map((c) => c.path)).toEqual(['/var/folders/ab/cd/T']);
   });
 
+  it('offers the macOS per-user temp dir under either spelling of /var', () => {
+    expect(tempCandidates('/private/var/folders/ab/cd/T').map((c) => c.path)).toEqual([
+      '/private/var/folders/ab/cd/T',
+    ]);
+    expect(tempCandidates('/var/folders/ab/cd/T/').map((c) => c.path)).toHaveLength(1);
+  });
+
+  it.each([
+    '/tmp',
+    '/private/tmp',
+    '/Users/me',
+    '/Users/me/Documents/T',
+    '/var/folders/ab/cd',
+    '/var/folders/ab/cd/T/sub',
+    '/',
+  ])('does not trust %s just because $TMPDIR points there', (dirPath) => {
+    expect(tempCandidates(dirPath)).toEqual([]);
+  });
+
+  it('says the size is an upper bound, since only old user-owned files go', () => {
+    const [candidate] = tempCandidates('/var/folders/ab/cd/T');
+    expect(candidate?.description).toContain('at most');
+  });
+
   it('does not claim to skip files that are in use, since find -delete does not check', () => {
     for (const c of tempCandidates('/var/folders/ab/cd/T')) {
       expect(c.description.toLowerCase()).not.toContain('in use');

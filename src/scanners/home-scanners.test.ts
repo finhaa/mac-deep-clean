@@ -280,19 +280,30 @@ describe('TrashScanner', () => {
 });
 
 describe('TempFilesScanner.scan', () => {
+  it('offers nothing when $TMPDIR is not the macOS per-user temp dir', async () => {
+    const tmp = await put('T', 50 * MB);
+    vi.spyOn(os, 'tmpdir').mockReturnValue(tmp);
+    expect(await new TempFilesScanner().scan()).toEqual([]);
+    vi.restoreAllMocks();
+  });
+
   it('offers the per-user temp dir only from 10 MB', async () => {
     const tmp = await put('T', 10 * MB - 1);
     vi.spyOn(os, 'tmpdir').mockReturnValue(tmp);
-    expect(await new TempFilesScanner().scan()).toEqual([]);
+    const scanner = new TempFilesScanner();
+    scanner.trustedTempRoot = /./;
+    expect(await scanner.scan()).toEqual([]);
     h.sizes.set(tmp, 10 * MB);
-    const [item] = await new TempFilesScanner().scan();
+    const [item] = await scanner.scan();
     expect(item).toMatchObject({ path: tmp, size: 10 * MB, risk: 'moderate' });
     vi.restoreAllMocks();
   });
 
   it('reports nothing when the temp dir does not exist', async () => {
     vi.spyOn(os, 'tmpdir').mockReturnValue(path.join(h.home, 'nope'));
-    expect(await new TempFilesScanner().scan()).toEqual([]);
+    const scanner = new TempFilesScanner();
+    scanner.trustedTempRoot = /./;
+    expect(await scanner.scan()).toEqual([]);
     vi.restoreAllMocks();
   });
 });

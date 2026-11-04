@@ -10,14 +10,17 @@ export interface TempCandidate {
   description: string;
 }
 
-// /tmp is a one-segment symlink that assertSafeToDelete always refuses, so it is never offered.
-export function tempCandidates(tmpDir: string): TempCandidate[] {
+// $TMPDIR is the user's to set, so only the macOS per-user temp dir is trusted as a deletion root.
+const PER_USER_TEMP = /^(?:\/private)?\/var\/folders\/[^/]+\/[^/]+\/T\/?$/;
+
+export function tempCandidates(tmpDir: string, trusted: RegExp = PER_USER_TEMP): TempCandidate[] {
+  if (!trusted.test(tmpDir)) return [];
   return [
     {
       path: tmpDir,
       label: `TMPDIR (${tmpDir})`,
       description:
-        'Deletes user-owned files older than 1 day; does not check whether a file is open',
+        'Frees at most this size: deletes user-owned files older than 1 day, and does not check whether a file is open',
     },
   ];
 }
@@ -28,9 +31,11 @@ export class TempFilesScanner extends BaseScanner {
   readonly description = 'Per-user temp dir (user-owned files older than 1 day)';
   readonly risk = 'moderate' as const;
 
+  trustedTempRoot: RegExp = PER_USER_TEMP;
+
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
-    for (const c of tempCandidates(os.tmpdir())) {
+    for (const c of tempCandidates(os.tmpdir(), this.trustedTempRoot)) {
       if (!(await pathExists(c.path))) continue;
       const size = await getSize(c.path);
       if (size < 10 * 1024 * 1024) continue;

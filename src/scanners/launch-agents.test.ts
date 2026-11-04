@@ -1,5 +1,8 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { canJudgeProgram, programResolves } from './launch-agents.js';
+import { canJudgeProgram, programResolves, volumeReachable } from './launch-agents.js';
 
 describe('programResolves', () => {
   it('resolves a bare program name against launchd PATH', async () => {
@@ -37,5 +40,22 @@ describe('canJudgeProgram', () => {
     const mounted = async (p: string) => p === '/Volumes/Work';
     expect(await canJudgeProgram('/Volumes/Work/bin/x', mounted)).toBe(true);
     expect(await canJudgeProgram('/Volumes/Gone/bin/x', mounted)).toBe(false);
+  });
+});
+
+describe('volumeReachable', () => {
+  it('follows a symlink, so one left behind by an unmounted disk is not reachable', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-volume-'));
+    try {
+      await fs.mkdir(path.join(dir, 'Work'));
+      await fs.symlink(path.join(dir, 'Work'), path.join(dir, 'Alias'));
+      await fs.symlink(path.join(dir, 'Gone'), path.join(dir, 'Dangling'));
+      expect(await volumeReachable(path.join(dir, 'Work'))).toBe(true);
+      expect(await volumeReachable(path.join(dir, 'Alias'))).toBe(true);
+      expect(await volumeReachable(path.join(dir, 'Dangling'))).toBe(false);
+      expect(await volumeReachable(path.join(dir, 'Missing'))).toBe(false);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 });

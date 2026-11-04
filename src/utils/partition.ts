@@ -29,3 +29,8 @@ export function partitionCleanable(reports: ScannerReport[]): PartitionedReports
   });
   return { reports: partitioned, infoItems };
 }
+
+/** A report is worth showing when an item has a size or is virtual (a snapshot has no measurable size). */
+export function hasContent(results: ScanResult[]): boolean {
+  return results.some((i) => i.size > 0 || i.virtual);
+}

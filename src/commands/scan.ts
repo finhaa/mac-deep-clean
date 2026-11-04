@@ -3,7 +3,7 @@ import Table from 'cli-table3';
 import { runScanners } from '../runner.js';
 import { getAllScanners } from '../scanners/index.js';
 import { colorRisk, colorSize, formatBytes, truncate } from '../utils/format.js';
-import { partitionCleanable } from '../utils/partition.js';
+import { hasContent, partitionCleanable } from '../utils/partition.js';
 import { flushWarnings } from '../utils/warnings.js';
 
 export async function scanCommand(
@@ -53,7 +53,7 @@ export async function scanCommand(
   console.log(`\n${chalk.bold('Total cleanable:')} ${chalk.bold(colorSize(total))}`);
 
   for (const r of sorted) {
-    if (r.results.length === 0 || r.totalSize === 0) continue;
+    if (!hasContent(r.results)) continue;
     console.log(`\n${chalk.bold(r.name)} ${chalk.grey(`(${r.category})`)}`);
     for (const item of r.results.slice(0, 8)) {
       console.log(

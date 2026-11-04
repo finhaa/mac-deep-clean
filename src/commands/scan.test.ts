@@ -95,6 +95,13 @@ describe('scanCommand', () => {
     expect(logged()).toContain('Estimated: 1.0 KB');
   });
 
+  it('lists a virtual item of size 0 such as a snapshot', async () => {
+    const snap: ScanResult = { ...item('a', 'snapshot-2026-11-04', 0), virtual: true };
+    vi.mocked(getAllScanners).mockReturnValue([scanner('a', 'safe', [snap])] as never);
+    await scanCommand({});
+    expect(logged()).toContain('snapshot-2026-11-04');
+  });
+
   it('reports a scanner that failed and still shows the others', async () => {
     vi.mocked(getAllScanners).mockReturnValue([
       scanner('a', 'safe', [], new Error('exploded')),

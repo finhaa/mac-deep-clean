@@ -11,7 +11,7 @@ import {
 import type { ScanResult } from '../types.js';
 import { colorSize, formatBytes, stripControl, truncate } from '../utils/format.js';
 import { isDirectory, resolveDeletionTarget } from '../utils/fs.js';
-import { HOME } from '../utils/paths.js';
+import { expandHome } from '../utils/paths.js';
 
 interface PurgeOptions {
   dryRun?: boolean;
@@ -28,7 +28,7 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
   if (options.path && options.path.length > 0) {
     const resolved: string[] = [];
     for (const p of options.path) {
-      const expanded = expandHome(p);
+      const expanded = path.resolve(expandHome(p));
       if (!(await isDirectory(expanded))) {
         console.error(chalk.red(`Not a directory: ${expanded}`));
         process.exitCode = 1;
@@ -137,10 +137,4 @@ async function deleteAll(results: ScanResult[], dryRun: boolean): Promise<void> 
     for (const e of errors.slice(0, 20)) console.log(`  ${chalk.yellow('⚠')} ${stripControl(e)}`);
   }
   console.log();
-}
-
-function expandHome(p: string): string {
-  if (p === '~') return HOME;
-  if (p.startsWith('~/')) return path.join(HOME, p.slice(2));
-  return path.resolve(p);
 }

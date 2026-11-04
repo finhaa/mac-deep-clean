@@ -1,5 +1,6 @@
 import type { CleanResult, ScanResult } from '../types.js';
 import { asInvokingUser, run } from '../utils/exec.js';
+import { getSize, pathExists } from '../utils/fs.js';
 import { BaseScanner } from './base-scanner.js';
 
 export class HomebrewScanner extends BaseScanner {
@@ -15,7 +16,6 @@ export class HomebrewScanner extends BaseScanner {
     if (code !== 0) return [];
     const cachePath = stdout.trim();
     if (!cachePath) return [];
-    const { getSize, pathExists } = await import('../utils/fs.js');
     if (!(await pathExists(cachePath))) return [];
     const size = await getSize(cachePath);
     if (size === 0) return [];

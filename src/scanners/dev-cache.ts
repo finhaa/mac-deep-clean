@@ -20,7 +20,7 @@ export class DevCacheScanner extends BaseScanner {
       { rel: '.cargo/registry/cache', label: 'Cargo registry cache' },
       { rel: '.cargo/registry/src', label: 'Cargo registry src' },
       { rel: 'go/pkg/mod/cache', label: 'Go module cache' },
-      { rel: 'Library/Caches/Homebrew/go_cache', label: 'Go build cache' },
+      { rel: 'Library/Caches/go-build', label: 'Go build cache' },
       { rel: '.gradle/caches', label: 'Gradle caches' },
       { rel: '.m2/repository', label: 'Maven repository', risk: 'moderate' },
       { rel: 'Library/Caches/pip', label: 'pip cache' },

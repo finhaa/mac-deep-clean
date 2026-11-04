@@ -14,6 +14,13 @@ describe('README', () => {
   });
 });
 
+describe('README --yes', () => {
+  it('says what --yes does with snapshots and other irreversible categories', () => {
+    const readme = read('README.md');
+    expect(readme).toContain('With `--yes` nothing is picked for you');
+  });
+});
+
 describe('README sudo advice', () => {
   it('does not run the whole tool as root for snapshot categories that call sudo themselves', () => {
     expect(read('README.md')).not.toMatch(

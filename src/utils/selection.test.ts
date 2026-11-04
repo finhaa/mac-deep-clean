@@ -45,4 +45,22 @@ describe('autoSelect', () => {
       '/q/venv',
     ]);
   });
+
+  describe.each([
+    'ios-backups',
+    'screen-recording',
+    'music-creation',
+    'time-machine',
+    'apfs-snapshots',
+  ])('%s', (category) => {
+    const irreversible = report([{ ...item('/x', 'moderate'), category }]);
+
+    it('is not picked by a broad --risky', () => {
+      expect(autoSelect([irreversible], true)).toEqual([]);
+    });
+
+    it('is picked when the caller names the category', () => {
+      expect(autoSelect([irreversible], true, true).map((r) => r.path)).toEqual(['/x']);
+    });
+  });
 });

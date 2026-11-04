@@ -92,6 +92,25 @@ describe('cleanCommand --yes', () => {
   });
 });
 
+describe('cleanCommand --yes with irreversible categories', () => {
+  const backups = () => fakeScanner('ios-backups', 'moderate', [item('ios-backups', 'moderate')]);
+
+  it('does not delete them for a broad --risky', async () => {
+    const b = backups();
+    vi.mocked(getAllScanners).mockReturnValue([safe, b] as never);
+    await cleanCommand({ yes: true, risky: true });
+    expect(b.clean).not.toHaveBeenCalled();
+    expect(safe.clean).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes them when the category is named', async () => {
+    const b = backups();
+    vi.mocked(getAllScanners).mockReturnValue([safe, b] as never);
+    await cleanCommand({ yes: true, category: 'ios-backups' });
+    expect(cleanedLabels(b)).toEqual(['ios-backups-item']);
+  });
+});
+
 describe('cleanCommand other paths', () => {
   it('passes dry-run through to every scanner clean', async () => {
     await cleanCommand({ yes: true, dryRun: true });

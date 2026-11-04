@@ -31,10 +31,22 @@ describe('permission warnings', () => {
     addPermissionWarning(`${HOME}ael/Library/Mail`, 150 * MB);
     addPermissionWarning('/LibraryX/cache', 150 * MB);
     addPermissionWarning('/usrlocal/x', 150 * MB);
+    addPermissionWarning(`${HOME}/LibraryBackup/x`, 150 * MB);
     const messages = flushWarnings();
     expect(messages).toHaveLength(1);
-    expect(messages[0]).toContain('3 other path(s) were unreadable');
+    expect(messages[0]).toContain('4 other path(s) were unreadable');
   });
+
+  it
+    .skipIf(isRoot)
+    .each(['/Library/Caches/x', '/private/var/db/x', '/System/Library/x', '/usr/local/x'])(
+    'send %s to sudo',
+    (target) => {
+      addPermissionWarning(target, 150 * MB);
+      const [message] = flushWarnings();
+      expect(message).toContain('root-owned');
+    },
+  );
 
   it('show a sibling of HOME in full instead of cutting it to ~...', () => {
     addPermissionWarning(`${HOME}ael/data`, 150 * MB);

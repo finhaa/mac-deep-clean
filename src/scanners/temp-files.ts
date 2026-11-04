@@ -64,7 +64,7 @@ export class TempFilesScanner extends BaseScanner {
         }
         const before = await getSize(r.path);
         const { code, stderr } = await run(
-          `find ${shellQuote(r.path)} -user ${shellQuote(user)} -type f -mtime +1 -delete`,
+          `find ${shellQuote(r.path)} -user ${shellQuote(user)} -type f -mmin +1440 -delete`,
           { timeout: 60_000 },
         );
         if (code !== 0) {

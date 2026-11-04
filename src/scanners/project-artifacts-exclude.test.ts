@@ -46,6 +46,16 @@ describe('isExcluded', () => {
     expect(await isExcluded(keep, [sibling])).toBe(false);
   });
 
+  it('ignores case, like the default macOS volume', async () => {
+    // Paths that do not exist are not resolved, so build them from the resolved root.
+    const base = await fs.realpath(root);
+    const keep = path.join(base, 'CaseOnly');
+    expect(await isExcluded(path.join(base, 'caseonly', 'a/node_modules'), [keep])).toBe(true);
+    expect(
+      await isExcluded(path.join(base, 'CASEONLY'), [path.join(base, 'caseonly', 'inner')]),
+    ).toBe(true);
+  });
+
   it('is false with nothing excluded', async () => {
     expect(await isExcluded(path.join(root, 'anything'), [])).toBe(false);
   });

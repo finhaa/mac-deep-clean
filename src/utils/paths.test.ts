@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { assertSafeToDelete, isProtectedPath } from './paths.js';
+import { assertSafeToDelete, isInside, isProtectedPath } from './paths.js';
 
 describe('isProtectedPath', () => {
   it('protects /System', () => {
@@ -163,5 +163,22 @@ describe('container directories stay exact-match so their children remain deleta
   it.each(deletable)('allows %s', (target) => {
     expect(isProtectedPath(target)).toBe(false);
     expect(() => assertSafeToDelete(target)).not.toThrow();
+  });
+});
+
+describe('isInside', () => {
+  it('matches the folder itself and anything below it, whatever the case', () => {
+    expect(isInside('/Applications', '/Applications')).toBe(true);
+    expect(isInside('/Applications', '/applications/Foo.app')).toBe(true);
+    expect(isInside('/opt', '/OPT/homebrew')).toBe(true);
+  });
+
+  it('does not match a sibling that only shares a name prefix', () => {
+    expect(isInside('/opt', '/optical')).toBe(false);
+    expect(isInside('/opt', '/tmp/opt')).toBe(false);
+  });
+
+  it('resolves relative segments before comparing', () => {
+    expect(isInside('/opt', '/opt/../tmp')).toBe(false);
   });
 });

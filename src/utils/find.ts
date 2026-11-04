@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { isInside } from './paths.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -29,11 +30,6 @@ function parseRecords(stdout: string): string[] {
   return records;
 }
 
-function isInside(root: string, target: string): boolean {
-  const rel = path.relative(root, target);
-  return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
-}
-
 /**
  * Directories named one of `names` under `root`, never descending into a match.
  * Every returned path is strictly inside `root` and ends in one of `names`.
@@ -58,7 +54,8 @@ export async function findDirsNamed(
     '-print0',
   ]);
   const found = parseRecords(stdout).filter(
-    (record) => names.includes(path.basename(record)) && isInside(root, record),
+    (record) =>
+      names.includes(path.basename(record)) && isInside(root, record) && !isInside(record, root),
   );
   return [...new Set(found)];
 }

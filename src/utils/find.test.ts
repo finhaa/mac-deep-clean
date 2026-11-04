@@ -136,3 +136,44 @@ describe('findDirsNamed (parsing of what find printed)', () => {
     expect(found).toEqual([`${root}/node_modules/a/node_modules`]);
   });
 });
+
+describe('findDirsNamed (record filter)', () => {
+  const records = (...paths: string[]) => fake(`${paths.join('\0')}\0`);
+
+  it('matches the root ignoring case, like the rest of the tool', async () => {
+    const found = await findDirsNamed(
+      '/Users/me/Code',
+      ['node_modules'],
+      5,
+      records('/users/me/code/a/node_modules'),
+    );
+    expect(found).toEqual(['/users/me/code/a/node_modules']);
+  });
+
+  it('never returns the root itself, whatever its spelling', async () => {
+    const same = await findDirsNamed(
+      '/work/node_modules',
+      ['node_modules'],
+      5,
+      records('/work/node_modules'),
+    );
+    const folded = await findDirsNamed(
+      '/Work/node_modules',
+      ['node_modules'],
+      5,
+      records('/work/node_modules'),
+    );
+    expect(same).toEqual([]);
+    expect(folded).toEqual([]);
+  });
+
+  it('drops a record that only shares a name prefix with the root', async () => {
+    const found = await findDirsNamed(
+      '/work/app',
+      ['node_modules'],
+      5,
+      records('/work/app-old/node_modules', '/work/app/node_modules'),
+    );
+    expect(found).toEqual(['/work/app/node_modules']);
+  });
+});

@@ -35,9 +35,11 @@ describe('ProjectArtifactsScanner.scan with hostile directory names', () => {
     try {
       const outsideArtifact = await artifact(path.join(outside, 'node_modules'));
       await fs.mkdir(path.join(root, 'sibling-project/src'), { recursive: true });
-      const hostile = await artifact(path.join(root, `evil\n${outside}`, 'node_modules'));
+      // The search root itself carries the forged line, so the walk depth does not depend on how deep the OS temp dir is.
+      const hostileRoot = path.join(root, `evil\n${outside}`);
+      const hostile = await artifact(path.join(hostileRoot, 'node_modules'));
 
-      const paths = (await scanner(root).scan()).map((r) => r.path);
+      const paths = (await scanner(hostileRoot).scan()).map((r) => r.path);
 
       expect(paths).toContain(hostile);
       expect(paths).not.toContain(path.join(root, 'evil'));

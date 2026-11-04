@@ -69,7 +69,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     if (skipped > 0) {
       console.log(
         chalk.grey(
-          `\nSkipped ${skipped} non-safe item(s). Run without --yes to pick them, or add --risky.`,
+          `\nSkipped ${skipped} item(s) that are not safe or are virtualenvs. Run without --yes to pick them, or add --risky for the rest.`,
         ),
       );
     }

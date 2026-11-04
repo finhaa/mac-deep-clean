@@ -152,11 +152,35 @@ describe('doctorCommand', () => {
   });
 
   it('prints no disk line when df fails or prints only a header', async () => {
-    vi.mocked(run).mockResolvedValueOnce({ stdout: '', stderr: 'boom', code: 1 });
+    vi.mocked(run).mockResolvedValueOnce({ stdout: df(500_000, 500_000), stderr: 'boom', code: 1 });
     vi.mocked(run).mockResolvedValueOnce(ok('Filesystem 1024-blocks Used Available\n'));
     state.reports = [];
     await doctorCommand();
     await doctorCommand();
     expect(output).not.toContain('Disk:');
+  });
+
+  it.each([
+    [795_000, 205_000, false, false],
+    [805_000, 195_000, true, false],
+    [895_000, 105_000, true, false],
+    [905_000, 95_000, false, true],
+  ])(
+    'with %i used and %i free the warnings are filling up %s, low %s',
+    async (used, avail, filling, low) => {
+      vi.mocked(run).mockResolvedValueOnce(ok(df(used, avail)));
+      state.reports = [];
+      await doctorCommand();
+      expect(output.includes('Disk filling up')).toBe(filling);
+      expect(output.includes('Low disk space')).toBe(low);
+    },
+  );
+
+  it('shows 100% free instead of NaN on a volume that reports no blocks', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(0, 0)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).toContain('(100.0%)');
+    expect(output).not.toContain('NaN');
   });
 });

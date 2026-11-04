@@ -113,3 +113,13 @@ describe('duplicatesCommand', () => {
     expect(process.exitCode).toBe(1);
   });
 });
+
+describe('duplicatesCommand terminal safety', () => {
+  it('strips control characters from a file name it lists', async () => {
+    await write('a/ev\u001b[2Kil.bin', 'same content here');
+    await write('b/two.bin', 'same content here');
+    await duplicatesCommand(root, { minSize: '1B' });
+    expect(logged()).toContain('ev?[2Kil.bin');
+    expect(logged()).not.toContain('\u001b');
+  });
+});

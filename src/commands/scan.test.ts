@@ -128,3 +128,34 @@ describe('scanCommand', () => {
     expect(logged()).toContain('beta');
   });
 });
+
+describe('scanCommand terminal safety', () => {
+  const EVIL = 'Evil\u001b[2K\rLabel';
+
+  it('strips control characters from a scanner name in the table', async () => {
+    const a = { ...scanner('a', 'safe', [item('a', 'ok')]), name: EVIL };
+    vi.mocked(getAllScanners).mockReturnValue([a] as never);
+    await scanCommand({});
+    const table = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => String(c[0]))
+      .find((line) => line.includes('Category'));
+    expect(table).toContain('Evil?[2K?Label');
+    expect(table).not.toContain('\u001b');
+  });
+
+  it('strips control characters from an item label', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([scanner('a', 'safe', [item('a', EVIL)])] as never);
+    await scanCommand({});
+    expect(logged()).toContain('Evil?[2K?Label');
+    expect(logged()).not.toContain('\u001b');
+  });
+
+  it('strips control characters from the label of an item it cannot clean', async () => {
+    const info = { ...item('a', EVIL), cleanable: false as const };
+    vi.mocked(getAllScanners).mockReturnValue([scanner('a', 'safe', [info])] as never);
+    await scanCommand({});
+    expect(logged()).toContain('Evil?[2K?Label');
+    expect(logged()).not.toContain('\u001b');
+  });
+});

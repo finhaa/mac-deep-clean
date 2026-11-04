@@ -92,6 +92,22 @@ describe('duplicatesCommand', () => {
     expect(logged()).toContain('No duplicate candidates by size');
   });
 
+  it.each(['abc', '0', '-2', '1.5', ''])(
+    'rejects --top %j instead of scanning with NaN',
+    async (top) => {
+      await write('a.bin', 'same');
+      await write('b.bin', 'same');
+      await duplicatesCommand(root, { minSize: '1B', top });
+      expect(process.exitCode).toBe(1);
+      expect(logged()).not.toContain('duplicate group');
+    },
+  );
+
+  it('rejects an unreadable --min-size instead of silently using the default', async () => {
+    await duplicatesCommand(root, { minSize: 'lots' });
+    expect(process.exitCode).toBe(1);
+  });
+
   it('fails on a path that is not a directory', async () => {
     await duplicatesCommand(path.join(root, 'missing'), {});
     expect(process.exitCode).toBe(1);

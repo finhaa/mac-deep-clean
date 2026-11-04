@@ -98,7 +98,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
     }
   }
 
-  await executeCleanup(reports, selected, options.dryRun ?? false);
+  await executeCleanup(selected, options.dryRun ?? false);
 }
 
 async function promptSelection(reports: ScannerReport[]): Promise<ScanResult[]> {
@@ -129,11 +129,7 @@ async function promptSelection(reports: ScannerReport[]): Promise<ScanResult[]> 
   return picked;
 }
 
-async function executeCleanup(
-  reports: ScannerReport[],
-  selected: ScanResult[],
-  dryRun: boolean,
-): Promise<void> {
+async function executeCleanup(selected: ScanResult[], dryRun: boolean): Promise<void> {
   const scanners = getAllScanners();
   const byCategory = new Map<string, ScanResult[]>();
   for (const r of selected) {
@@ -159,9 +155,6 @@ async function executeCleanup(
       allErrors.push(`${scanner.name}: ${(err as Error).message}`);
     }
   }
-
-  // Report for unused variable (keeps types aligned with future extensions)
-  void reports;
 
   console.log(
     `\n${chalk.bold.green('✓ Done.')} Freed ${chalk.bold(colorSize(totalFreed))}${dryRun ? chalk.yellow(' (dry run)') : ''}`,

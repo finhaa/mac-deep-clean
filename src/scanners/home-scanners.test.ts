@@ -151,6 +151,16 @@ describe('DevCacheScanner', () => {
   });
 });
 
+describe('DevCacheScanner Go caches', () => {
+  it('reports the real Go build cache and leaves the go_cache inside Homebrew to the Homebrew scanner', async () => {
+    await put('Library/Caches/go-build', 12 * MB);
+    await put('Library/Caches/Homebrew/go_cache', 12 * MB);
+    const results = await new DevCacheScanner().scan();
+    expect(rel(results)).toEqual(['Library/Caches/go-build']);
+    expect(results[0]?.label).toBe('Go build cache');
+  });
+});
+
 describe('IosBackupsScanner', () => {
   it('reports each backup of 10 MB or more, largest first, and warns that deletion is permanent', async () => {
     const root = 'Library/Application Support/MobileSync/Backup';

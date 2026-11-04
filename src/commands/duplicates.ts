@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { colorSize, formatBytes, truncate } from '../utils/format.js';
 import { isDirectory } from '../utils/fs.js';
-import { HOME } from '../utils/paths.js';
+import { HOME, expandHome } from '../utils/paths.js';
 
 interface DuplicatesOptions {
   minSize?: string;
@@ -42,15 +42,25 @@ export async function duplicatesCommand(
 ): Promise<void> {
   console.log(chalk.bold.cyan('\n🔍 mac-deep-clean duplicates (read-only)\n'));
 
-  const root = expandHome(searchPath);
+  const root = path.resolve(expandHome(searchPath));
   if (!(await isDirectory(root))) {
     console.error(chalk.red(`Not a directory: ${root}`));
     process.exitCode = 1;
     return;
   }
 
-  const minSize = options.minSize ? parseSize(options.minSize) : DEFAULT_MIN_BYTES;
-  const topN = options.top ? Number.parseInt(options.top, 10) : DEFAULT_TOP_GROUPS;
+  const minSize = options.minSize === undefined ? DEFAULT_MIN_BYTES : parseSize(options.minSize);
+  if (minSize === null) {
+    console.error(chalk.red(`--min-size must look like 500K, 10M or 2G, got "${options.minSize}"`));
+    process.exitCode = 1;
+    return;
+  }
+  const topN = options.top === undefined ? DEFAULT_TOP_GROUPS : Number(options.top);
+  if (!Number.isInteger(topN) || topN < 1) {
+    console.error(chalk.red(`--top must be a whole number of 1 or more, got "${options.top}"`));
+    process.exitCode = 1;
+    return;
+  }
 
   console.log(
     chalk.grey(
@@ -172,9 +182,9 @@ function sha256(filePath: string): Promise<string | null> {
   });
 }
 
-function parseSize(input: string): number {
+function parseSize(input: string): number | null {
   const match = input.match(/^(\d+(?:\.\d+)?)\s*([KMGT]?B?)$/i);
-  if (!match) return DEFAULT_MIN_BYTES;
+  if (!match) return null;
   const value = Number.parseFloat(match[1]!);
   const unit = match[2]!.toUpperCase();
   const multipliers: Record<string, number> = {
@@ -195,10 +205,4 @@ function parseSize(input: string): number {
 function displayPath(p: string): string {
   if (p.startsWith(HOME)) return `~${p.slice(HOME.length)}`;
   return p;
-}
-
-function expandHome(p: string): string {
-  if (p === '~') return HOME;
-  if (p.startsWith('~/')) return path.join(HOME, p.slice(2));
-  return path.resolve(p);
 }

@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const spin = vi.hoisted(() => ({ failed: [] as string[] }));
+
 vi.mock('ora', () => {
-  const spinner = { start: () => spinner, succeed: () => spinner, fail: () => spinner };
+  const spinner = {
+    start: () => spinner,
+    succeed: () => spinner,
+    fail: (text: string) => {
+      spin.failed.push(text);
+      return spinner;
+    },
+  };
   return { default: () => spinner };
 });
 vi.mock('@inquirer/prompts', () => ({ checkbox: vi.fn(), confirm: vi.fn() }));
@@ -36,6 +45,7 @@ let risky: ReturnType<typeof fakeScanner>;
 let mixed: ReturnType<typeof fakeScanner>;
 
 beforeEach(() => {
+  spin.failed.length = 0;
   safe = fakeScanner('safe-cat', 'safe', [item('safe-cat', 'safe')]);
   moderate = fakeScanner('moderate-cat', 'moderate', [item('moderate-cat', 'moderate')]);
   risky = fakeScanner('risky-cat', 'risky', [item('risky-cat', 'risky')]);
@@ -307,5 +317,50 @@ describe('cleanCommand output', () => {
       .join('\n');
     expect(out).toContain('vm');
     expect(out).not.toContain('\u001b[2J');
+  });
+});
+
+describe('cleanCommand terminal safety', () => {
+  const EVIL = 'Evil\u001b[2K\rLabel';
+  const logged = () =>
+    vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+
+  it('strips control characters from the label of an item it cannot clean', async () => {
+    const info = { ...item('safe-cat', 'safe', EVIL), cleanable: false as const };
+    vi.mocked(getAllScanners).mockReturnValue([fakeScanner('safe-cat', 'safe', [info])] as never);
+    await cleanCommand({ yes: true, dryRun: true });
+    expect(logged()).toContain('Evil?[2K?Label');
+    expect(logged()).not.toContain('\u001b[2K');
+    expect(logged()).not.toContain('\r');
+  });
+
+  it('strips control characters from a label in the picker', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([
+      fakeScanner('safe-cat', 'safe', [item('safe-cat', 'safe', EVIL)]),
+    ] as never);
+    vi.mocked(checkbox).mockReset();
+    vi.mocked(checkbox).mockResolvedValue([] as never);
+    await cleanCommand({});
+    const { choices } = vi.mocked(checkbox).mock.calls[0]?.[0] as unknown as {
+      choices: { name: string }[];
+    };
+    expect(choices[0]?.name).toContain('Evil?[2K?Label');
+    expect(choices[0]?.name).not.toContain('\u001b[2K');
+    expect(choices[0]?.name).not.toContain('\r');
+  });
+
+  it('strips control characters from the error a scanner throws, on the spinner and in the report', async () => {
+    const broken = fakeScanner('safe-cat', 'safe', [item('safe-cat', 'safe')]);
+    broken.clean.mockRejectedValue(new Error(`boom${EVIL}`));
+    vi.mocked(getAllScanners).mockReturnValue([broken] as never);
+    await cleanCommand({ yes: true });
+    expect(spin.failed.join('\n')).toContain('boomEvil?[2K?Label');
+    expect(spin.failed.join('\n')).not.toContain('\u001b[2K');
+    expect(spin.failed.join('\n')).not.toContain('\r');
+    expect(logged()).not.toContain('\u001b[2K');
+    expect(logged()).not.toContain('\r');
   });
 });

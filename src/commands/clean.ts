@@ -155,8 +155,9 @@ async function executeCleanup(selected: ScanResult[], dryRun: boolean): Promise<
       allErrors.push(...errors);
       spinner.succeed(`${scanner.name}: freed ${formatBytes(freed)}`);
     } catch (err) {
-      spinner.fail(`${scanner.name}: ${(err as Error).message}`);
-      allErrors.push(`${scanner.name}: ${(err as Error).message}`);
+      const message = `${scanner.name}: ${stripControl((err as Error).message)}`;
+      spinner.fail(message);
+      allErrors.push(message);
     }
   }
 

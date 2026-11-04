@@ -247,3 +247,33 @@ describe('purgeCommand interactive', () => {
     expect(out).not.toContain('\u001b');
   });
 });
+
+describe('purgeCommand terminal safety', () => {
+  const EVIL = 'Evil\u001b[2K\rLabel';
+  const out = () =>
+    vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+
+  it('strips control characters from a label in the --yes listing', async () => {
+    state.results = [{ ...art(NODE_MODULES), label: EVIL }];
+    await purgeCommand({ yes: true, dryRun: true });
+    expect(out()).toContain('Evil?[2K?Label');
+    expect(out()).not.toContain('\u001b[2K');
+    expect(out()).not.toContain('\r');
+  });
+
+  it('strips control characters from a label in the picker', async () => {
+    state.results = [{ ...art(NODE_MODULES), label: EVIL }];
+    vi.mocked(checkbox).mockReset();
+    vi.mocked(checkbox).mockResolvedValue([] as never);
+    await purgeCommand({});
+    const { choices } = vi.mocked(checkbox).mock.calls[0]?.[0] as unknown as {
+      choices: { name: string }[];
+    };
+    expect(choices[0]?.name).toContain('Evil?[2K?Label');
+    expect(choices[0]?.name).not.toContain('\u001b[2K');
+    expect(choices[0]?.name).not.toContain('\r');
+  });
+});

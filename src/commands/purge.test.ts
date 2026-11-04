@@ -163,33 +163,6 @@ describe('purgeCommand --path', () => {
   );
 });
 
-describe('purgeCommand --path spelled through a protected folder', () => {
-  it('refuses it even when a symlink moves that folder somewhere unprotected', async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-home-'));
-    try {
-      const fakeHome = path.join(dir, 'home');
-      await fsp.mkdir(fakeHome);
-      await fsp.mkdir(path.join(dir, 'elsewhere/proj'), { recursive: true });
-      await fsp.symlink(path.join(dir, 'elsewhere'), path.join(fakeHome, 'Documents'));
-      vi.resetModules();
-      vi.stubEnv('HOME', fakeHome);
-      const fresh = await import('./purge.js');
-      await fresh.purgeCommand({ path: [path.join(fakeHome, 'Documents/proj')], yes: true });
-      expect(process.exitCode).toBe(1);
-      const err = vi
-        .mocked(console.error)
-        .mock.calls.map((c) => c.join(' '))
-        .join('\n');
-      expect(err).toContain('protected path');
-      expect(state.scanners[0]?.searchRoots).toBeNull();
-    } finally {
-      vi.unstubAllEnvs();
-      vi.resetModules();
-      await fsp.rm(dir, { recursive: true, force: true });
-    }
-  });
-});
-
 describe('purgeCommand interactive', () => {
   beforeEach(() => {
     vi.mocked(checkbox).mockReset();

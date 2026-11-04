@@ -102,6 +102,18 @@ export function purgeRootProblem(root: string): string | null {
   return null;
 }
 
+/**
+ * The real folder behind `root` and why purge must not walk it. A protected spelling is refused even when a
+ * symlink moves it somewhere unprotected, and so is a plain spelling that really lands in a protected folder.
+ */
+export async function checkPurgeRoot(
+  root: string,
+): Promise<{ real: string; problem: string | null }> {
+  const resolved = path.resolve(root);
+  const real = await fs.realpath(resolved);
+  return { real, problem: purgeRootProblem(resolved) ?? purgeRootProblem(real) };
+}
+
 export async function resolveSearchRoots(explicit: string[] | null): Promise<string[]> {
   if (explicit) return dedupeByRealpath(explicit);
   const found: string[] = [];

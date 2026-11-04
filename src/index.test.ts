@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const calls = vi.hoisted(() => ({
@@ -29,6 +30,23 @@ beforeEach(() => {
 
 afterEach(() => {
   process.argv = realArgv;
+});
+
+describe('--version', () => {
+  it('prints the version from package.json, not a copy of it', async () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    try {
+      await cli('--version');
+      expect(write.mock.calls.map((c) => String(c[0])).join('')).toContain(pkg.version);
+    } finally {
+      write.mockRestore();
+      exit.mockRestore();
+    }
+  });
 });
 
 describe('command line wiring', () => {

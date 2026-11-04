@@ -9,14 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial 26-scanner suite covering wallpaper cache, Electron app caches,
+- Initial 27-scanner suite covering wallpaper cache, Electron app caches,
   containers, screen recording apps, Docker, Android SDK/AVDs,
   iOS simulators + Xcode DerivedData, iOS device backups, Time Machine
   snapshots, APFS snapshots, music creation libraries, browsers, dev
   caches, Homebrew, JetBrains IDEs, Spotify, Mail Downloads, Diagnostic
   Reports, Saved Application State, temp files, Trash, orphaned
-  LaunchAgents, logs, user caches, system caches, and project build
-  artifacts.
+  LaunchAgents, logs, user caches, system caches, project build
+  artifacts, and leaked `tmp_pack_*` git files.
+- `purge --exclude <path>` keeps the given dirs (and anything inside them) out of
+  the purge, and `purge` never offers the `node_modules` of the running tool.
 - `purge` command that walks developer project roots
   (`~/code`, `~/Projects`, `~/dev`, …) and removes build artifact dirs
   (`node_modules`, `.venv`, `target`, `Pods`, `.next`, `.terraform`,
@@ -87,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PROTECTED_PATHS` prevents deletion of home, Documents, Desktop, Downloads,
   Pictures, Music, Movies, .ssh, .gnupg, and system directories.
 - `assertSafeToDelete` rejects `/` and any near-root path.
-- Docker cleanup uses `docker system prune -a --volumes` (never manual `rm`).
+- Docker cleanup uses `docker system prune -a -f` (never manual `rm`); volumes are kept.
 - iOS simulator cleanup uses `xcrun simctl delete unavailable`.
 - Time Machine and APFS snapshot deletion shell out to the official
   `tmutil` / `diskutil` commands with sudo.

@@ -52,7 +52,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
       console.log(
         `  ${chalk.grey('•')} ${truncate(item.label, 50).padEnd(52)} ${colorSize(item.size)}`,
       );
-      if (item.description) console.log(`    ${chalk.grey(item.description)}`);
+      if (item.description) console.log(`    ${chalk.grey(stripControl(item.description))}`);
     }
   }
   const nonEmpty = reports.filter((r) => hasContent(r.results));

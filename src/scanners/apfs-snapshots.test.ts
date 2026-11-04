@@ -84,6 +84,18 @@ describe('ApfsSnapshotsScanner.scan', () => {
     vi.mocked(run).mockReset();
   });
 
+  it('shows a snapshot name without control characters, C1 ones included', async () => {
+    listing(
+      `Snapshots for disk3s1 (1 found)\n|\n${entry(USER_UUID, 'com.example.bad\u0085\u001bname', 3)}`,
+    );
+
+    const [result] = await new ApfsSnapshotsScanner().scan();
+
+    expect(result?.label).toContain('com.example.bad');
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: the point of the test
+    expect(result?.label).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+  });
+
   it('lists snapshots on the Data volume, never on the sealed root volume', async () => {
     listing(MIXED_LISTING);
 

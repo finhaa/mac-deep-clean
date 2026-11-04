@@ -1,6 +1,7 @@
 import ora from 'ora';
 import type { BaseScanner } from './scanners/index.js';
 import type { ScanOptions, ScannerReport } from './types.js';
+import { stripControl } from './utils/format.js';
 
 export async function runScanners(
   scanners: BaseScanner[],
@@ -32,7 +33,7 @@ export async function runScanners(
         totalSize: 0,
         error: message,
       });
-      spinner.fail(`${scanner.name}: ${message}`);
+      spinner.fail(`${scanner.name}: ${stripControl(message)}`);
     }
   }
   return reports;

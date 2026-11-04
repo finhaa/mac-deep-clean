@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { stripControl } from './format.js';
 import { HOME } from './paths.js';
 
 type WarningKind = 'fda' | 'sudo' | 'other';
@@ -79,8 +80,7 @@ function sumBytes(list: PermissionWarning[]): number {
 
 function displayPath(p: string): string {
   const resolved = path.resolve(p);
-  if (resolved.startsWith(HOME)) return `~${resolved.slice(HOME.length)}`;
-  return resolved;
+  return stripControl(resolved.startsWith(HOME) ? `~${resolved.slice(HOME.length)}` : resolved);
 }
 
 function sampleLines(list: PermissionWarning[]): string {

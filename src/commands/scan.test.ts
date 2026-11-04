@@ -102,6 +102,22 @@ describe('scanCommand', () => {
     expect(logged()).toContain('snapshot-2026-11-04');
   });
 
+  it('prints no control characters from an item description or a scanner error', async () => {
+    const described: ScanResult = {
+      ...item('a', 'alpha'),
+      cleanable: false,
+      description: 'desc\u001b[2Jx',
+    };
+    vi.mocked(getAllScanners).mockReturnValue([
+      scanner('a', 'safe', [described]),
+      scanner('b', 'safe', [], new Error('boom\u001b[2Jy')),
+    ] as never);
+    await scanCommand({});
+    expect(logged()).toContain('desc');
+    expect(logged()).toContain('boom');
+    expect(logged()).not.toContain('\u001b[2J');
+  });
+
   it('reports a scanner that failed and still shows the others', async () => {
     vi.mocked(getAllScanners).mockReturnValue([
       scanner('a', 'safe', [], new Error('exploded')),

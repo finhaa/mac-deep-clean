@@ -57,14 +57,29 @@ A few categories need root permissions — either to measure accurately
 (`/Library/Caches/*`, which is root-owned) or to actually delete
 (`tmutil` snapshots, `diskutil apfs` snapshots, `/Library/*`).
 
-Preferred flow:
+Snapshot deletion needs no root process: the Time Machine and APFS scanners
+run `sudo tmutil ...` and `sudo diskutil ...` for that one command and ask for
+your password then. So run those without sudo:
 
 ```bash
 npm run build
-sudo node dist/index.js scan
-sudo node dist/index.js clean --category time-machine
-sudo node dist/index.js clean --category apfs-snapshots
+node dist/index.js clean --category time-machine
+node dist/index.js clean --category apfs-snapshots
 ```
+
+Only `system-cache` (root-owned `/Library/Caches` entries) needs the whole tool
+to run as root:
+
+```bash
+sudo node dist/index.js scan --category system-cache
+sudo node dist/index.js clean --category system-cache --dry-run
+```
+
+Everything a root run does, it does as root: every scanner, every shell
+command (`find`, `du`, `plutil`, `docker`) and every deletion, with root's
+`PATH`. Keep a root run to a single `--category`, preview it with `--dry-run`
+first, and never combine `sudo` with `--yes --risky`. Only Homebrew and Xcode
+tooling are handed back to the invoking user (`SUDO_USER`).
 
 Each snapshot is listed on its own, by date (Time Machine) or by name (APFS),
 and only the ones you pick are deleted. Snapshots have no measurable size, so

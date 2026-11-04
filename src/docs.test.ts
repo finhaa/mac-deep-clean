@@ -14,6 +14,14 @@ describe('README', () => {
   });
 });
 
+describe('README sudo advice', () => {
+  it('does not run the whole tool as root for snapshot categories that call sudo themselves', () => {
+    expect(read('README.md')).not.toMatch(
+      /sudo node dist\/index\.js clean --category (time-machine|apfs-snapshots)/,
+    );
+  });
+});
+
 describe('CHANGELOG', () => {
   it('states the real number of scanners', () => {
     const count = getAllScanners().length;

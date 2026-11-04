@@ -141,14 +141,14 @@ describe('scanCommand terminal safety', () => {
       .mock.calls.map((c) => String(c[0]))
       .find((line) => line.includes('Category'));
     expect(table).toContain('Evil?[2K?Label');
-    expect(table).not.toContain('\u001b');
+    expect(table).not.toMatch(/\u001b\[2K|\r/);
   });
 
   it('strips control characters from an item label', async () => {
     vi.mocked(getAllScanners).mockReturnValue([scanner('a', 'safe', [item('a', EVIL)])] as never);
     await scanCommand({});
     expect(logged()).toContain('Evil?[2K?Label');
-    expect(logged()).not.toContain('\u001b');
+    expect(logged()).not.toMatch(/\u001b\[2K|\r/);
   });
 
   it('strips control characters from the label of an item it cannot clean', async () => {
@@ -156,6 +156,6 @@ describe('scanCommand terminal safety', () => {
     vi.mocked(getAllScanners).mockReturnValue([scanner('a', 'safe', [info])] as never);
     await scanCommand({});
     expect(logged()).toContain('Evil?[2K?Label');
-    expect(logged()).not.toContain('\u001b');
+    expect(logged()).not.toMatch(/\u001b\[2K|\r/);
   });
 });

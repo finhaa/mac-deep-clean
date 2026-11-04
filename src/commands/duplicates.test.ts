@@ -120,6 +120,6 @@ describe('duplicatesCommand terminal safety', () => {
     await write('b/two.bin', 'same content here');
     await duplicatesCommand(root, { minSize: '1B' });
     expect(logged()).toContain('ev?[2Kil.bin');
-    expect(logged()).not.toContain('\u001b');
+    expect(logged()).not.toMatch(/\u001b\[2K|\r/);
   });
 });

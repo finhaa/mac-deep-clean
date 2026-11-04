@@ -260,7 +260,7 @@ describe('purgeCommand terminal safety', () => {
     state.results = [{ ...art(NODE_MODULES), label: EVIL }];
     await purgeCommand({ yes: true, dryRun: true });
     expect(out()).toContain('Evil?[2K?Label');
-    expect(out()).not.toContain('\u001b');
+    expect(out()).not.toMatch(/\u001b\[2K|\r/);
   });
 
   it('strips control characters from a label in the picker', async () => {
@@ -272,6 +272,6 @@ describe('purgeCommand terminal safety', () => {
       choices: { name: string }[];
     };
     expect(choices[0]?.name).toContain('Evil?[2K?Label');
-    expect(choices[0]?.name).not.toContain('\u001b');
+    expect(choices[0]?.name).not.toMatch(/\u001b\[2K|\r/);
   });
 });

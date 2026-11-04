@@ -76,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added tests for the interactive paths of `clean` and `purge` (pre-ticked
   items, confirmation defaulting to no, dry run, declined and empty picks),
   `scan`, `duplicates` and the command line wiring.
+- Added tests for the orphaned LaunchAgents, System Caches, Trash and Temp
+  Files scans, the project-artifacts worktree and project-file filters, and
+  the git tmp_pack protected-path guard.
 
 ### Safety
 

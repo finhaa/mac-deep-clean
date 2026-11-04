@@ -48,6 +48,7 @@ export class DockerScanner extends BaseScanner {
           label: 'Docker system (unused images, stopped containers, build cache)',
           category: this.category,
           risk: this.risk,
+          irreversible: true,
           description:
             'docker system prune -a -f — unused images, stopped containers, build cache. Volumes (databases) are kept.',
         });

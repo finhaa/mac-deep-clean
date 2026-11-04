@@ -60,6 +60,13 @@ describe('TimeMachineScanner.scan', () => {
     expect(results.every((r) => r.size === 0 && r.virtual === true)).toBe(true);
   });
 
+  it('marks every snapshot irreversible', async () => {
+    const results = await new TimeMachineScanner().scan();
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.irreversible === true)).toBe(true);
+  });
+
   it('ignores other snapshot names and a date that is not a date', async () => {
     const paths = (await new TimeMachineScanner().scan()).map((r) => r.path);
 

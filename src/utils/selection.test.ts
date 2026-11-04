@@ -46,14 +46,8 @@ describe('autoSelect', () => {
     ]);
   });
 
-  describe.each([
-    'ios-backups',
-    'screen-recording',
-    'music-creation',
-    'time-machine',
-    'apfs-snapshots',
-  ])('%s', (category) => {
-    const irreversible = report([{ ...item('/x', 'moderate'), category }]);
+  describe('an irreversible item', () => {
+    const irreversible = report([{ ...item('/x', 'moderate'), irreversible: true }]);
 
     it('is not picked by a broad --risky', () => {
       expect(autoSelect([irreversible], true)).toEqual([]);
@@ -62,5 +56,18 @@ describe('autoSelect', () => {
     it('is picked when the caller names the category', () => {
       expect(autoSelect([irreversible], true, true).map((r) => r.path)).toEqual(['/x']);
     });
+
+    it('is not picked from a safe scan either', () => {
+      const safe = report([{ ...item('/s', 'safe'), irreversible: true }]);
+      expect(autoSelect([safe], false)).toEqual([]);
+    });
+  });
+
+  it('decides from the flag, never from the category name', () => {
+    const named = report([
+      { ...item('/by-name', 'moderate'), category: 'ios-backups' },
+      { ...item('/by-flag', 'moderate'), category: 'jetbrains', irreversible: true },
+    ]);
+    expect(autoSelect([named], true).map((r) => r.path)).toEqual(['/by-name']);
   });
 });

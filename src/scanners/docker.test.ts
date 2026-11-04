@@ -67,6 +67,7 @@ describe('DockerScanner.scan', () => {
     expect(dfCalls).toHaveLength(1);
     const system = results.find((r) => r.path === 'docker:system');
     expect(system?.size).toBe(Math.round(7.864 * 1024 ** 3));
+    expect(system?.irreversible).toBe(true);
   });
 });
 

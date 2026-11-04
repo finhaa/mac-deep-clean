@@ -61,6 +61,7 @@ export class ApfsSnapshotsScanner extends BaseScanner {
       label: `APFS snapshot "${stripControl(s.name)}" on ${VOLUME}`,
       category: this.category,
       risk: 'risky' as const,
+      irreversible: true,
       description: `sudo diskutil apfs deleteSnapshot ${VOLUME} -uuid ${s.uuid} (requires sudo)`,
     }));
   }

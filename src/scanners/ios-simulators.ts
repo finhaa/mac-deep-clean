@@ -56,6 +56,7 @@ export class IosSimulatorsScanner extends BaseScanner {
           label: 'Xcode Archives',
           category: this.category,
           risk: 'moderate',
+          irreversible: true,
           description: 'Xcode archived app builds',
         });
       }

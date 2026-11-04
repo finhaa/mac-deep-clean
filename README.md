@@ -37,7 +37,7 @@ mac-deep-clean scan --deep        # Also report Electron app full state (risky)
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
 mac-deep-clean clean --risky      # Include risky categories (docker, Electron state)
-mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky, except snapshots, iOS backups, screen recordings and music projects, which need their own --category); .venv/venv always left to the picker
+mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky, except the irreversible ones listed under snapshots below, which need their own --category); .venv/venv always left to the picker
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
@@ -83,11 +83,14 @@ first, and never combine `sudo` with `--yes --risky`. Only Homebrew and Xcode
 tooling are handed back to the invoking user (`SUDO_USER`).
 
 Each snapshot is listed on its own, by date (Time Machine) or by name (APFS),
-and only the ones you pick are deleted. With `--yes` nothing is picked for you:
-`--yes --risky` skips `time-machine`, `apfs-snapshots`, `ios-backups`,
-`screen-recording` and `music-creation` (their deletes cannot be undone), and
-they run only when you name them, as in `clean --category time-machine --yes`. Snapshots have no measurable size, so
-the list shows 0 B. APFS snapshots are `risky`: they appear only with
+and only the ones you pick are deleted. With `--yes` only safe items are picked,
+and `--yes --risky` adds the moderate and risky ones except the irreversible
+items (their deletes cannot be undone): Time Machine and APFS snapshots, iOS
+backups, screen recording data, music libraries, the Docker system prune, Xcode
+Archives, Android virtual devices and JetBrains caches (LocalHistory lives
+there). They run only when you name their category, as in
+`clean --category time-machine --yes`, which then picks every item of it.
+Snapshots have no measurable size, so the list shows 0 B. APFS snapshots are `risky`: they appear only with
 `--category apfs-snapshots` or `--risky`, and the OS update and Time Machine
 snapshots are never offered there.
 

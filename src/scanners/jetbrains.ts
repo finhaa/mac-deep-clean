@@ -31,6 +31,7 @@ export class JetBrainsScanner extends BaseScanner {
           label: `${name} (${root.kind})`,
           category: this.category,
           risk: this.risk,
+          irreversible: root.kind === 'caches',
           description: `JetBrains ${root.kind} for ${name} — caches rebuild, LocalHistory does not`,
         });
       }

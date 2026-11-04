@@ -140,6 +140,15 @@ describe('ApfsSnapshotsScanner.scan', () => {
     expect(result?.virtual).toBe(true);
     expect(result?.risk).toBe('risky');
   });
+
+  it('marks every snapshot irreversible', async () => {
+    listing(MIXED_LISTING);
+
+    const results = await new ApfsSnapshotsScanner().scan();
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.irreversible === true)).toBe(true);
+  });
 });
 
 describe('ApfsSnapshotsScanner.clean', () => {

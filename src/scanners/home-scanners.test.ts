@@ -28,6 +28,7 @@ import { DevCacheScanner } from './dev-cache.js';
 import { IosBackupsScanner } from './ios-backups.js';
 import { JetBrainsScanner } from './jetbrains.js';
 import { MailDownloadsScanner } from './mail-downloads.js';
+import { MusicCreationScanner } from './music-creation.js';
 import { SavedAppStateScanner } from './saved-app-state.js';
 import { ScreenRecordingScanner } from './screen-recording.js';
 import { TempFilesScanner } from './temp-files.js';
@@ -97,6 +98,18 @@ describe('AndroidScanner', () => {
     const studio = results.find((r) => r.path.includes('AndroidStudio'));
     expect(studio?.risk).toBe('safe');
     expect(results.find((r) => r.path.endsWith('sdk'))?.risk).toBe('moderate');
+  });
+
+  it('marks an AVD irreversible and leaves the re-downloadable SDK and caches unmarked', async () => {
+    await put('Library/Android/sdk', 1);
+    await put('.android/avd/big.avd', 100 * MB);
+    await put('Library/Caches/Google/AndroidStudio2024.1', 10 * MB);
+    const results = await new AndroidScanner().scan();
+    expect(results.map((r) => [path.basename(r.path), r.irreversible ?? false]).sort()).toEqual([
+      ['AndroidStudio2024.1', false],
+      ['big.avd', true],
+      ['sdk', false],
+    ]);
   });
 
   it('reports nothing on a machine without Android tooling', async () => {
@@ -207,6 +220,7 @@ describe('IosBackupsScanner', () => {
     expect(rel(results)).toEqual([`${root}/aaaa1111bbbb2222cccc`, `${root}/dddd3333eeee4444ffff`]);
     expect(results[0]?.size).toBe(90 * MB);
     expect(results[0]?.description).toContain('permanent');
+    expect(results.every((r) => r.irreversible === true)).toBe(true);
   });
 
   it('reports nothing without a backup folder', async () => {
@@ -249,6 +263,25 @@ describe('JetBrainsScanner', () => {
     expect(results.map((r) => r.size)).toEqual([40 * MB, 12 * MB]);
     expect(results[0]?.label).toBe('IntelliJIdea2024.1 (caches)');
   });
+
+  it('marks the caches irreversible, since LocalHistory lives there, and the logs not', async () => {
+    await put('Library/Caches/JetBrains/IntelliJIdea2024.1', 40 * MB);
+    await put('Library/Logs/JetBrains/IntelliJIdea2024.1', 12 * MB);
+    const results = await new JetBrainsScanner().scan();
+    expect(results.map((r) => [r.label, r.irreversible ?? false])).toEqual([
+      ['IntelliJIdea2024.1 (caches)', true],
+      ['IntelliJIdea2024.1 (logs)', false],
+    ]);
+  });
+});
+
+describe('MusicCreationScanner', () => {
+  it('marks a user library of 100 MB or more irreversible', async () => {
+    await put('Library/Application Support/GarageBand', 100 * MB);
+    const results = await new MusicCreationScanner().scan();
+    const userLibrary = results.find((r) => r.path.startsWith(h.home));
+    expect(userLibrary?.irreversible).toBe(true);
+  });
 });
 
 describe('ScreenRecordingScanner', () => {
@@ -259,6 +292,7 @@ describe('ScreenRecordingScanner', () => {
     const results = await new ScreenRecordingScanner().scan();
     expect(results.map((r) => r.label).sort()).toEqual(['Cap data', 'Screen Studio data']);
     expect(results.every((r) => r.risk === 'moderate')).toBe(true);
+    expect(results.every((r) => r.irreversible === true)).toBe(true);
   });
 });
 

@@ -19,6 +19,13 @@ export interface ScanResult {
    * must not hide it from the cleanup list.
    */
   virtual?: boolean;
+  /**
+   * True when deleting the item destroys data that cannot be regenerated,
+   * re-downloaded or restored (a backup, a snapshot, a recording, LocalHistory,
+   * an archive). `clean --yes` never picks it from a broad `--risky`; the caller
+   * must name its `--category`. Every scanner that emits such an item sets it.
+   */
+  irreversible?: boolean;
 }
 
 export interface ScannerReport {

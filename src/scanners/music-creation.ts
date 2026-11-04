@@ -33,6 +33,7 @@ export class MusicCreationScanner extends BaseScanner {
         label: t.label,
         category: this.category,
         risk: this.risk,
+        irreversible: true,
         description: 'Sound library — re-downloadable from the app',
       });
     }

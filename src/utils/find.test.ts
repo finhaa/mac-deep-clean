@@ -64,6 +64,27 @@ describe('findDirsNamed (real find)', () => {
   });
 });
 
+describe('findDirsNamed when find cannot enter a folder', () => {
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+
+  it.skipIf(isRoot)(
+    'still returns what it found elsewhere, since find prints the rest and exits 1',
+    async () => {
+      await fs.mkdir(path.join(root, 'a/node_modules'), { recursive: true });
+      const locked = path.join(root, 'locked');
+      await fs.mkdir(path.join(locked, 'inner'), { recursive: true });
+      await fs.chmod(locked, 0o000);
+      try {
+        expect(await findDirsNamed(root, ['node_modules'], 5)).toEqual([
+          path.join(root, 'a/node_modules'),
+        ]);
+      } finally {
+        await fs.chmod(locked, 0o755);
+      }
+    },
+  );
+});
+
 describe('findDirsNamed (parsing of what find printed)', () => {
   it('drops a last record that was cut off, since it has no terminator', async () => {
     const found = await findDirsNamed(

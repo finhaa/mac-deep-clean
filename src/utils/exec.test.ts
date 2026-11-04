@@ -61,6 +61,10 @@ describe('asInvokingUser', () => {
     expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
     asRoot('rafa$(id)');
     expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
+    for (const hostile of ['rafa;id', 'rafa&id', 'rafa|id', 'rafa`id`', 'rafa\nid', 'ra fa']) {
+      asRoot(hostile);
+      expect(() => asInvokingUser('brew cleanup'), JSON.stringify(hostile)).toThrow(/SUDO_USER/);
+    }
   });
 
   it('re-runs the command as the invoking user under sudo and escapes single quotes', () => {

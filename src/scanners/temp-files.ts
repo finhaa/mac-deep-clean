@@ -1,4 +1,5 @@
 import os from 'node:os';
+import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
 import { run, shellQuote } from '../utils/exec.js';
 import { getSize, pathExists, resolveDeletionTarget } from '../utils/fs.js';
@@ -14,11 +15,12 @@ export interface TempCandidate {
 const PER_USER_TEMP = /^(?:\/private)?\/var\/folders\/[^/]+\/[^/]+\/T\/?$/;
 
 export function tempCandidates(tmpDir: string, trusted: RegExp = PER_USER_TEMP): TempCandidate[] {
-  if (!trusted.test(tmpDir)) return [];
+  const resolved = path.resolve(tmpDir);
+  if (!trusted.test(resolved)) return [];
   return [
     {
-      path: tmpDir,
-      label: `TMPDIR (${tmpDir})`,
+      path: resolved,
+      label: `TMPDIR (${resolved})`,
       description:
         'Frees at most this size: deletes user-owned files older than 1 day, and does not check whether a file is open',
     },

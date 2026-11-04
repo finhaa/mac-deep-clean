@@ -47,8 +47,18 @@ describe('tempCandidates', () => {
     '/var/folders/ab/cd/T/sub',
     '/Users/me/var/folders/ab/cd/T',
     '/',
+    '/var/folders/../../T',
+    '/var/folders/ab/../T',
+    '/var/folders/ab/cd/T/../../..',
+    '/var/folders/./cd/T',
   ])('does not trust %s just because $TMPDIR points there', (dirPath) => {
     expect(tempCandidates(dirPath)).toEqual([]);
+  });
+
+  it('offers the resolved path when the spelling carries dot segments that still land in the temp dir', () => {
+    expect(tempCandidates('/var/folders/ab/cd/x/../T').map((c) => c.path)).toEqual([
+      '/var/folders/ab/cd/T',
+    ]);
   });
 
   it('says the size is an upper bound, since only old user-owned files go', () => {

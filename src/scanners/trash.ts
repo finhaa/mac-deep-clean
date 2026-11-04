@@ -8,7 +8,7 @@ export class TrashScanner extends BaseScanner {
   readonly name = 'Trash';
   readonly category = 'trash';
   readonly description = 'Files in ~/.Trash';
-  readonly risk = 'safe' as const;
+  readonly risk = 'moderate' as const;
 
   async scan(): Promise<ScanResult[]> {
     const trash = path.join(HOME, '.Trash');

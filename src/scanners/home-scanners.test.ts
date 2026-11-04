@@ -71,7 +71,11 @@ describe('scanners that report one fixed folder', () => {
       await put(folder, 5 * MB);
       const results = await scanner.scan();
       expect(rel(results)).toEqual([folder]);
-      expect(results[0]).toMatchObject({ size: 5 * MB, category: scanner.category, risk: 'safe' });
+      expect(results[0]).toMatchObject({
+        size: 5 * MB,
+        category: scanner.category,
+        risk: scanner.risk,
+      });
     },
   );
 });
@@ -165,6 +169,27 @@ describe('IosBackupsScanner', () => {
   });
 });
 
+describe('risk labels of folders that can hold work not stored elsewhere', () => {
+  it('keeps Mail Downloads, JetBrains and Trash out of the safe tier', async () => {
+    await put('Library/Containers/com.apple.mail/Data/Library/Mail Downloads', 5 * MB);
+    await put('Library/Caches/JetBrains/IntelliJIdea2024.1', 40 * MB);
+    await put('.Trash', 5 * MB);
+    for (const scanner of [
+      new MailDownloadsScanner(),
+      new JetBrainsScanner(),
+      new TrashScanner(),
+    ]) {
+      const results = await scanner.scan();
+      expect(scanner.risk, scanner.name).toBe('moderate');
+      expect(results.length, scanner.name).toBeGreaterThan(0);
+      expect(
+        results.every((r) => r.risk === 'moderate'),
+        scanner.name,
+      ).toBe(true);
+    }
+  });
+});
+
 describe('JetBrainsScanner', () => {
   it('reports per-IDE caches and logs of 10 MB or more, largest first', async () => {
     await put('Library/Caches/JetBrains/IntelliJIdea2024.1', 40 * MB);
@@ -240,7 +265,11 @@ describe('TrashScanner', () => {
     await put('.Trash/b', 4 * MB);
     const [item, ...rest] = await new TrashScanner().scan();
     expect(rest).toEqual([]);
-    expect(item).toMatchObject({ path: path.join(h.home, '.Trash'), size: 7 * MB, risk: 'safe' });
+    expect(item).toMatchObject({
+      path: path.join(h.home, '.Trash'),
+      size: 7 * MB,
+      risk: 'moderate',
+    });
   });
 
   it('reports nothing for an empty or missing trash', async () => {

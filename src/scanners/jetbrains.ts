@@ -8,7 +8,7 @@ export class JetBrainsScanner extends BaseScanner {
   readonly name = 'JetBrains IDEs';
   readonly category = 'jetbrains';
   readonly description = 'JetBrains IDE caches, logs, and indexes';
-  readonly risk = 'safe' as const;
+  readonly risk = 'moderate' as const;
 
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
@@ -31,7 +31,7 @@ export class JetBrainsScanner extends BaseScanner {
           label: `${name} (${root.kind})`,
           category: this.category,
           risk: this.risk,
-          description: `JetBrains ${root.kind} for ${name} — rebuilds on next launch`,
+          description: `JetBrains ${root.kind} for ${name} — caches rebuild, LocalHistory does not`,
         });
       }
     }

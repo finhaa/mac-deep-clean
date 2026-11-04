@@ -8,7 +8,7 @@ export class MailDownloadsScanner extends BaseScanner {
   readonly name = 'Mail Downloads';
   readonly category = 'mail-downloads';
   readonly description = 'Apple Mail attachment downloads cache';
-  readonly risk = 'safe' as const;
+  readonly risk = 'moderate' as const;
 
   async scan(): Promise<ScanResult[]> {
     const target = path.join(HOME, 'Library/Containers/com.apple.mail/Data/Library/Mail Downloads');
@@ -22,7 +22,7 @@ export class MailDownloadsScanner extends BaseScanner {
         label: 'Mail Downloads',
         category: this.category,
         risk: this.risk,
-        description: 'Attachment cache — Mail re-downloads on demand',
+        description: 'Attachments opened from Mail; edited copies live only here',
       },
     ];
   }

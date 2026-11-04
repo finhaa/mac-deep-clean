@@ -169,13 +169,18 @@ describe('purgeCommand --path spelled through a protected folder', () => {
     try {
       const fakeHome = path.join(dir, 'home');
       await fsp.mkdir(fakeHome);
-      await fsp.mkdir(path.join(dir, 'elsewhere'));
+      await fsp.mkdir(path.join(dir, 'elsewhere/proj'), { recursive: true });
       await fsp.symlink(path.join(dir, 'elsewhere'), path.join(fakeHome, 'Documents'));
       vi.resetModules();
       vi.stubEnv('HOME', fakeHome);
       const fresh = await import('./purge.js');
-      await fresh.purgeCommand({ path: [path.join(fakeHome, 'Documents')], yes: true });
+      await fresh.purgeCommand({ path: [path.join(fakeHome, 'Documents/proj')], yes: true });
       expect(process.exitCode).toBe(1);
+      const err = vi
+        .mocked(console.error)
+        .mock.calls.map((c) => c.join(' '))
+        .join('\n');
+      expect(err).toContain('protected path');
       expect(state.scanners[0]?.searchRoots).toBeNull();
     } finally {
       vi.unstubAllEnvs();

@@ -133,13 +133,13 @@ never listed. Review carefully; export anything you care about before cleaning.
 | Browser Caches        | `browser-cache`      | safe     |
 | Developer Caches      | `dev-cache`          | safe     |
 | Homebrew              | `homebrew`           | safe     |
-| JetBrains IDEs        | `jetbrains`          | safe     |
+| JetBrains IDEs        | `jetbrains`          | moderate |
 | Spotify               | `spotify`            | safe     |
-| Mail Downloads        | `mail-downloads`     | safe     |
+| Mail Downloads        | `mail-downloads`     | moderate |
 | Diagnostic Reports    | `diagnostic-reports` | safe     |
 | Saved App State       | `saved-app-state`    | safe     |
 | Temp Files            | `temp-files`         | moderate |
-| Trash                 | `trash`              | safe     |
+| Trash                 | `trash`              | moderate |
 | Orphaned LaunchAgents | `launch-agents`      | moderate |
 | Logs                  | `logs`               | safe     |
 | User Caches           | `user-cache`         | safe     |

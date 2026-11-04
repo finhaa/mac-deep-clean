@@ -56,6 +56,41 @@ describe('isExcluded', () => {
     ).toBe(true);
   });
 
+  it('resolves an exclude that is a symlink to the folder it protects', async () => {
+    const real = path.join(root, 'sym-real');
+    await fs.mkdir(path.join(real, 'a/node_modules'), { recursive: true });
+    const link = path.join(root, 'sym-exclude-link');
+    await fs.symlink(real, link);
+    expect(await isExcluded(path.join(real, 'a/node_modules'), [link])).toBe(true);
+    expect(await isExcluded(real, [link])).toBe(true);
+  });
+
+  it('resolves a target that is a symlink into an excluded folder', async () => {
+    const keep = path.join(root, 'sym-keep');
+    await fs.mkdir(path.join(keep, 'a/node_modules'), { recursive: true });
+    const link = path.join(root, 'sym-target-link');
+    await fs.symlink(path.join(keep, 'a/node_modules'), link);
+    expect(await isExcluded(link, [keep])).toBe(true);
+  });
+
+  it('resolves a target symlink that leads to a folder holding the excluded one', async () => {
+    const holder = path.join(root, 'sym-holder');
+    await fs.mkdir(path.join(holder, 'inner/mine'), { recursive: true });
+    const link = path.join(root, 'sym-holder-link');
+    await fs.symlink(holder, link);
+    expect(await isExcluded(link, [path.join(holder, 'inner/mine')])).toBe(true);
+  });
+
+  it('does not exclude a symlink whose real folder lies outside the excluded one', async () => {
+    const keep = path.join(root, 'sym-keep2');
+    const elsewhere = path.join(root, 'sym-elsewhere');
+    await fs.mkdir(keep, { recursive: true });
+    await fs.mkdir(elsewhere, { recursive: true });
+    const link = path.join(keep, 'out');
+    await fs.symlink(elsewhere, link);
+    expect(await isExcluded(link, [keep])).toBe(false);
+  });
+
   it('is false with nothing excluded', async () => {
     expect(await isExcluded(path.join(root, 'anything'), [])).toBe(false);
   });

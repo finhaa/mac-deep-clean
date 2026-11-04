@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ScannerReport } from '../types.js';
-import { partitionCleanable } from './partition.js';
+import { hasContent, partitionCleanable } from './partition.js';
 
 const item = (path: string, size: number, cleanable?: boolean) => ({
   path,
@@ -38,5 +38,14 @@ describe('partitionCleanable', () => {
       error: 'boom',
     };
     expect(partitionCleanable([report]).reports[0]).toMatchObject({ name: 'N', error: 'boom' });
+  });
+});
+
+describe('hasContent', () => {
+  it('is true for a sized item or a virtual item of size 0, false for nothing else', () => {
+    expect(hasContent([item('/a', 10)])).toBe(true);
+    expect(hasContent([{ ...item('/s', 0), virtual: true }])).toBe(true);
+    expect(hasContent([item('/z', 0)])).toBe(false);
+    expect(hasContent([])).toBe(false);
   });
 });

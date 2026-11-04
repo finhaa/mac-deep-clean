@@ -5,7 +5,7 @@ import { runScanners } from '../runner.js';
 import { getAllScanners } from '../scanners/index.js';
 import type { CleanOptions, ScanResult, ScannerReport } from '../types.js';
 import { colorRisk, colorSize, formatBytes, stripControl, truncate } from '../utils/format.js';
-import { partitionCleanable } from '../utils/partition.js';
+import { hasContent, partitionCleanable } from '../utils/partition.js';
 import { autoSelect } from '../utils/selection.js';
 import { flushWarnings } from '../utils/warnings.js';
 
@@ -55,7 +55,7 @@ export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
       if (item.description) console.log(`    ${chalk.grey(item.description)}`);
     }
   }
-  const nonEmpty = reports.filter((r) => r.results.some((i) => i.size > 0 || i.virtual));
+  const nonEmpty = reports.filter((r) => hasContent(r.results));
   if (nonEmpty.length === 0) {
     console.log(chalk.green('\n✓ Nothing to clean.\n'));
     return;

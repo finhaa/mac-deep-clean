@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
@@ -9,7 +10,7 @@ import {
 } from '../scanners/project-artifacts.js';
 import type { ScanResult } from '../types.js';
 import { colorSize, formatBytes, stripControl, truncate } from '../utils/format.js';
-import { isDirectory } from '../utils/fs.js';
+import { isDirectory, resolveDeletionTarget } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 
 interface PurgeOptions {
@@ -118,15 +119,13 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
 }
 
 async function deleteAll(results: ScanResult[], dryRun: boolean): Promise<void> {
-  const fs = await import('node:fs/promises');
-  const { assertSafeToDelete } = await import('../utils/paths.js');
   let freed = 0;
   const errors: string[] = [];
   const spinner = ora(`Deleting ${results.length} dirs…`).start();
   for (const r of results) {
     try {
-      assertSafeToDelete(r.path);
-      if (!dryRun) await fs.rm(r.path, { recursive: true, force: true });
+      const real = await resolveDeletionTarget(r.path);
+      if (!dryRun) await rm(real, { recursive: true, force: true });
       freed += r.size;
     } catch (err) {
       errors.push(`${r.path}: ${(err as Error).message}`);

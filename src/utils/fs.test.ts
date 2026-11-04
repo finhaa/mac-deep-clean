@@ -23,6 +23,35 @@ afterEach(async () => {
   await fsp.rm(root, { recursive: true, force: true });
 });
 
+describe('a symlinked parent component', () => {
+  it('cannot lead safeRemove into a protected path', async () => {
+    await fsp.symlink('/usr', path.join(root, 'link'));
+    const rm = vi.spyOn(fsp, 'rm').mockResolvedValue();
+    await expect(safeRemove(path.join(root, 'link', 'bin'))).rejects.toThrow(/protected/);
+    expect(rm).not.toHaveBeenCalled();
+  });
+
+  it('cannot lead clearDir into a protected path', async () => {
+    await fsp.symlink('/usr', path.join(root, 'link'));
+    const rm = vi.spyOn(fsp, 'rm').mockResolvedValue();
+    const { freed, errors } = await clearDir(path.join(root, 'link', 'bin'));
+    expect(freed).toBe(0);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.every((e) => e.includes('protected'))).toBe(true);
+    expect(rm).not.toHaveBeenCalled();
+  });
+
+  it('still removes a symlinked leaf as a link and leaves its target alone', async () => {
+    const outside = path.join(root, 'outside');
+    await fsp.mkdir(outside);
+    await fsp.writeFile(path.join(outside, 'keep'), 'x');
+    await fsp.symlink(outside, path.join(root, 'leaf'));
+    await safeRemove(path.join(root, 'leaf'));
+    expect(await pathExists(path.join(root, 'leaf'))).toBe(false);
+    expect(await pathExists(path.join(outside, 'keep'))).toBe(true);
+  });
+});
+
 describe('clearDir', () => {
   it('removes every child and keeps the directory', async () => {
     await fsp.writeFile(path.join(root, 'a'), 'x');

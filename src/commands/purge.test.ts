@@ -1,3 +1,4 @@
+import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -180,6 +181,23 @@ describe('purgeCommand interactive', () => {
       .mock.calls.map((c) => c.join(' '))
       .join('\n');
     expect(out).toContain('EACCES');
+  });
+
+  it('refuses a dir that reaches a protected path through a symlinked parent', async () => {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-link-'));
+    try {
+      await fsp.symlink('/usr', path.join(dir, 'link'));
+      state.results = [art(path.join(dir, 'link', 'bin'))];
+      await purgeCommand({});
+      expect(rm()).not.toHaveBeenCalled();
+      const out = vi
+        .mocked(console.log)
+        .mock.calls.map((c) => c.join(' '))
+        .join('\n');
+      expect(out).toContain('protected');
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('strips terminal control characters from a deletion error', async () => {

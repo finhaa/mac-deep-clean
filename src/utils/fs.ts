@@ -64,10 +64,25 @@ export async function listDir(p: string): Promise<string[]> {
   }
 }
 
-export async function safeRemove(target: string): Promise<void> {
+/**
+ * Checks `target` and returns the path to delete. The parent is resolved first, so a symlinked
+ * parent component cannot lead a lexically safe path into a protected one; the leaf is left alone
+ * because removing a symlink removes only the link.
+ */
+export async function resolveDeletionTarget(target: string): Promise<string> {
   assertSafeToDelete(target);
-  if (!(await pathExists(target))) return;
-  await fs.rm(target, { recursive: true, force: true });
+  const resolved = path.resolve(target);
+  const parent = await fs.realpath(path.dirname(resolved)).catch(() => null);
+  if (!parent) return resolved;
+  const real = path.join(parent, path.basename(resolved));
+  assertSafeToDelete(real);
+  return real;
+}
+
+export async function safeRemove(target: string): Promise<void> {
+  const real = await resolveDeletionTarget(target);
+  if (!(await pathExists(real))) return;
+  await fs.rm(real, { recursive: true, force: true });
 }
 
 /**
@@ -86,8 +101,8 @@ export async function clearDir(
     const child = path.join(dir, name);
     const size = await getSize(child);
     try {
-      assertSafeToDelete(child);
-      await fs.rm(child, { recursive: true, force: true });
+      const real = await resolveDeletionTarget(child);
+      await fs.rm(real, { recursive: true, force: true });
     } catch (err) {
       errors.push(`${child}: ${(err as Error).message}`);
       continue;

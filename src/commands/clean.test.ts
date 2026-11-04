@@ -124,6 +124,52 @@ describe('cleanCommand --yes with irreversible categories', () => {
   });
 });
 
+describe('cleanCommand --yes skip message', () => {
+  const logged = () =>
+    vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+  const venv = () =>
+    fakeScanner('project-artifacts', 'moderate', [
+      { ...item('project-artifacts', 'moderate'), path: '/tmp/mdc-wiring/app/.venv' },
+    ]);
+  const backups = () =>
+    fakeScanner('ios-backups', 'moderate', [
+      { ...item('ios-backups', 'moderate'), irreversible: true },
+    ]);
+
+  it('says nothing when every item was picked', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([safe] as never);
+    await cleanCommand({ yes: true });
+    expect(logged()).not.toContain('Skipped');
+  });
+
+  it('offers --risky when it was not given', async () => {
+    await cleanCommand({ yes: true });
+    expect(logged()).toContain('Skipped 1 item(s) that are not safe');
+    expect(logged()).toContain('or add --risky for the rest');
+  });
+
+  it('does not offer --risky when it was given', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([safe, backups()] as never);
+    await cleanCommand({ yes: true, risky: true });
+    expect(logged()).toContain(
+      'Skipped 1 item(s) that are virtualenvs or need their own --category',
+    );
+    expect(logged()).not.toContain('--risky');
+    expect(logged()).not.toContain('not safe');
+  });
+
+  it('does not ask for a category that was given', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([venv()] as never);
+    await cleanCommand({ yes: true, category: 'project-artifacts' });
+    expect(logged()).toContain('Skipped 1 item(s) that are virtualenvs.');
+    expect(logged()).not.toContain('--risky');
+    expect(logged()).not.toContain('their own --category');
+  });
+});
+
 describe('cleanCommand other paths', () => {
   it('passes dry-run through to every scanner clean', async () => {
     await cleanCommand({ yes: true, dryRun: true });

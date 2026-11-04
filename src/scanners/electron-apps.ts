@@ -90,6 +90,7 @@ export class ElectronAppsScanner extends BaseScanner {
           label: `${appName} — ${relative} (state)`,
           category: this.category,
           risk: 'risky',
+          irreversible: true,
           description: `${appName} ${relative}: conversations, workspaces, extension or session data. DELETING LOSES it. Settings files are never listed.`,
         });
       }

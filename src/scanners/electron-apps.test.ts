@@ -56,4 +56,16 @@ describe('ElectronAppsScanner --deep', () => {
     expect(paths).not.toContain(path.join(CLAUDE, 'IndexedDB'));
     expect(paths).toContain(path.join(CLAUDE, 'Cache'));
   });
+
+  it('marks every state folder risky and irreversible, and the caches safe and not', async () => {
+    const results = (await new ElectronAppsScanner().scan({ deep: true })).filter((r) =>
+      r.label.startsWith('Claude'),
+    );
+    const state = results.filter((r) => r.label.endsWith('(state)'));
+    const caches = results.filter((r) => !r.label.endsWith('(state)'));
+    expect(state.length).toBeGreaterThan(0);
+    expect(caches.length).toBeGreaterThan(0);
+    expect(state.every((r) => r.risk === 'risky' && r.irreversible === true)).toBe(true);
+    expect(caches.every((r) => r.risk === 'safe' && !r.irreversible)).toBe(true);
+  });
 });

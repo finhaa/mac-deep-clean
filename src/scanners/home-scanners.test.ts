@@ -164,6 +164,16 @@ describe('DevCacheScanner', () => {
   });
 });
 
+describe('DevCacheScanner moderate folders', () => {
+  it('marks the CocoaPods repos moderate, since a spec repo can hold local changes', async () => {
+    await put('.cocoapods/repos', 20 * MB);
+    await put('Library/Caches/CocoaPods', 20 * MB);
+    const results = await new DevCacheScanner().scan();
+    expect(results.find((r) => r.path.endsWith('.cocoapods/repos'))?.risk).toBe('moderate');
+    expect(results.find((r) => r.path.endsWith('Caches/CocoaPods'))?.risk).toBe('safe');
+  });
+});
+
 describe('DevCacheScanner Go caches', () => {
   it('reports the real Go build cache and leaves the go_cache inside Homebrew to the Homebrew scanner', async () => {
     await put('Library/Caches/go-build', 12 * MB);

@@ -52,7 +52,6 @@ import { getAllScanners } from './index.js';
 import { OWNED_BY_OTHER_SCANNERS } from './logs.js';
 
 describe('every scanner together', () => {
-  // Every scanner module loads lazily on its first scan, which can pass 5 s on a busy machine.
   it('never offers the same path twice, nor a path inside another scanner target', async () => {
     const entries: Array<{ scanner: string; path: string }> = [];
     for (const scanner of getAllScanners()) {
@@ -78,5 +77,5 @@ describe('every scanner together', () => {
     );
     expect(duplicates).toEqual([]);
     expect(overlaps).toEqual([]);
-  }, 30_000);
+  });
 });

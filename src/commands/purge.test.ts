@@ -16,7 +16,7 @@ vi.mock('ora', () => {
 vi.mock('@inquirer/prompts', () => ({ checkbox: vi.fn(), confirm: vi.fn() }));
 vi.mock('../utils/fs.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../utils/fs.js')>();
-  const rm = vi.fn(async () => {});
+  const rm = vi.fn(async (_target: string) => {});
   state.rm = rm;
   // The real guard runs first, so a protected path never reaches the recorded delete.
   const safeRemove = async (target: string) => rm(await actual.resolveDeletionTarget(target));

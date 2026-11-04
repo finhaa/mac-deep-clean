@@ -9,6 +9,7 @@ describe('isCoveredElsewhere', () => {
     'JetBrains',
     'com.apple.Safari',
     'CocoaPods',
+    'go-build',
     'ms-playwright',
     'ms-playwright-mcp',
   ])('skips %s, owned by another scanner or not a cache', (name) => {

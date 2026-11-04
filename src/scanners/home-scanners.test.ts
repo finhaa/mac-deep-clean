@@ -161,6 +161,41 @@ describe('DevCacheScanner Go caches', () => {
   });
 });
 
+describe('scanners sharing ~/Library/Caches', () => {
+  it('never offer the same path twice, nor a path inside another scanner target', async () => {
+    const caches = [
+      'go-build',
+      'pip',
+      'pypoetry',
+      'uv',
+      'deno',
+      'Yarn',
+      'CocoaPods',
+      'pre-commit',
+      'Composer',
+      'Bazel',
+      'JetBrains',
+      'Google',
+      'SomeOtherApp',
+    ];
+    for (const name of caches) await put(`Library/Caches/${name}`, 300 * MB);
+    const scanners: BaseScanner[] = [
+      new DevCacheScanner(),
+      new UserCacheScanner(),
+      new BrowserCacheScanner(),
+      new JetBrainsScanner(),
+    ];
+    const paths = (await Promise.all(scanners.map((s) => s.scan()))).flat().map((r) => r.path);
+    expect(paths.length).toBeGreaterThan(caches.length - 3);
+    const overlaps = paths.flatMap((a) =>
+      paths.filter((b) => a !== b && b.startsWith(`${a}/`)).map((b) => `${a} contains ${b}`),
+    );
+    const duplicates = paths.filter((p, i) => paths.indexOf(p) !== i);
+    expect(duplicates).toEqual([]);
+    expect(overlaps).toEqual([]);
+  });
+});
+
 describe('IosBackupsScanner', () => {
   it('reports each backup of 10 MB or more, largest first, and warns that deletion is permanent', async () => {
     const root = 'Library/Application Support/MobileSync/Backup';

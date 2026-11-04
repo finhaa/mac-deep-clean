@@ -67,6 +67,43 @@ describe('TimeMachineScanner.scan', () => {
     expect(paths.some((p) => p.includes('not-a-date'))).toBe(false);
   });
 
+  it('lists a snapshot once even when tmutil prints it twice', async () => {
+    answer(`${LISTING}com.apple.TimeMachine.2026-11-02-120000.local\n`);
+
+    const paths = (await new TimeMachineScanner().scan()).map((r) => r.path);
+
+    expect(paths).toEqual([
+      'tmutil:snapshot:2026-11-02-120000',
+      'tmutil:snapshot:2026-11-03-080000',
+    ]);
+  });
+
+  it('ignores names that only contain or start like a snapshot name', async () => {
+    answer(
+      [
+        'com.apple.TimeMachine.2026-11-02-120000.local.extra',
+        'xcom.apple.TimeMachine.2026-11-02-120000.local',
+        'backup.com.apple.TimeMachine.2026-11-02-120000',
+      ].join('\n'),
+    );
+
+    expect(await new TimeMachineScanner().scan()).toEqual([]);
+  });
+
+  it('reads a snapshot name padded with spaces or ending in a carriage return', async () => {
+    answer('  com.apple.TimeMachine.2026-11-02-120000.local\r\n');
+
+    expect((await new TimeMachineScanner().scan()).map((r) => r.path)).toEqual([
+      'tmutil:snapshot:2026-11-02-120000',
+    ]);
+  });
+
+  it('offers nothing when tmutil fails, whatever it printed', async () => {
+    answer(LISTING, 1, 'tmutil: error');
+
+    expect(await new TimeMachineScanner().scan()).toEqual([]);
+  });
+
   it('offers nothing when tmutil is missing', async () => {
     vi.mocked(commandExists).mockResolvedValue(false);
 

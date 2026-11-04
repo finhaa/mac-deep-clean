@@ -117,6 +117,8 @@ describe('protected subtrees (README: never touched, nor any directory that cont
     '/var/db/dslocal',
     '/private/var/db/dslocal',
     '/private/var/protected/x',
+    '/var/protected',
+    '/var/protected/x',
     path.join(home, 'Documents/x'),
     path.join(home, 'Documents/a/b/node_modules'),
     path.join(home, 'Desktop/x'),

@@ -6,6 +6,7 @@ import {
   isCheckedByDefault,
   isInsideLinkedWorktree,
   looksLikeBuildArtifact,
+  resolveSearchRoots,
 } from './project-artifacts.js';
 
 let root: string;
@@ -69,5 +70,17 @@ describe('isInsideLinkedWorktree', () => {
   it('does not treat an explicitly chosen search root as a worktree to skip', async () => {
     const wt = path.join(root, 'wt');
     expect(await isInsideLinkedWorktree(path.join(wt, 'pkg/node_modules'), wt)).toBe(false);
+  });
+});
+
+describe('resolveSearchRoots with explicit roots', () => {
+  it('keeps one entry per real folder and drops what does not exist', async () => {
+    const real = path.join(root, 'main');
+    const link = path.join(root, 'main-link');
+    await fs.symlink(real, link);
+
+    const roots = await resolveSearchRoots([real, link, path.join(root, 'nowhere')]);
+
+    expect(roots).toEqual([real]);
   });
 });

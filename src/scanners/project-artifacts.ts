@@ -149,13 +149,14 @@ async function realpathOr(p: string): Promise<string> {
   return fs.realpath(p).catch(() => path.resolve(p));
 }
 
-// True when target is one of the excluded dirs or sits inside one.
+// True when target is one of the excluded dirs, sits inside one, or holds one (deleting it would take the excluded dir along).
 export async function isExcluded(target: string, excludes: string[]): Promise<boolean> {
   if (excludes.length === 0) return false;
   const real = await realpathOr(target);
   for (const exclude of excludes) {
     const ex = await realpathOr(exclude);
-    if (real === ex || real.startsWith(ex + path.sep)) return true;
+    if (real === ex || real.startsWith(ex + path.sep) || ex.startsWith(real + path.sep))
+      return true;
   }
   return false;
 }

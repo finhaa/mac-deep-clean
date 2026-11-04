@@ -31,11 +31,19 @@ describe('isExcluded', () => {
     expect(await isExcluded(path.join(keep, 'a/node_modules'), [keep])).toBe(true);
   });
 
+  it('matches a dir that contains an excluded dir, since deleting it would delete the excluded one', async () => {
+    const artifact = path.join(root, 'holder/node_modules');
+    const inner = path.join(artifact, 'packages/mine');
+    await fs.mkdir(inner, { recursive: true });
+    expect(await isExcluded(artifact, [inner])).toBe(true);
+  });
+
   it('does not match a sibling that only shares a name prefix', async () => {
     const keep = path.join(root, 'keep');
     const sibling = path.join(root, 'keep-not');
     await fs.mkdir(sibling, { recursive: true });
     expect(await isExcluded(sibling, [keep])).toBe(false);
+    expect(await isExcluded(keep, [sibling])).toBe(false);
   });
 
   it('is false with nothing excluded', async () => {
@@ -60,6 +68,20 @@ describe('findOwnNodeModules', () => {
 });
 
 describe('ProjectArtifactsScanner', () => {
+  it('does not offer an artifact dir that holds an excluded dir', async () => {
+    const holder = await makeProject('proj-holder');
+    const inner = path.join(holder, 'packages/mine');
+    await fs.mkdir(inner, { recursive: true });
+    const scanner = new ProjectArtifactsScanner();
+    scanner.searchRoots = [root];
+    scanner.excludeRoots = [inner];
+    scanner.protectedDirs = [];
+
+    const paths = (await scanner.scan()).map((r) => r.path);
+
+    expect(paths).not.toContain(holder);
+  });
+
   it('skips excluded roots and the protected node_modules of the running tool', async () => {
     const kept = await makeProject('proj-keep');
     const excluded = await makeProject('proj-excluded');

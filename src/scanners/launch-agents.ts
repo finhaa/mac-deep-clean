@@ -93,15 +93,23 @@ export async function programResolves(
   return false;
 }
 
+// A disk that is gone can leave its symlink in /Volumes, which lstat still finds: the volume must resolve.
+export async function volumeReachable(volume: string): Promise<boolean> {
+  return fs.stat(volume).then(
+    () => true,
+    () => false,
+  );
+}
+
 // launchd resolves a relative path against its own working directory, and a program on an unmounted volume
 // is not missing, only out of reach: neither is evidence of an orphan.
 export async function canJudgeProgram(
   program: string,
-  exists: (p: string) => Promise<boolean> = mayExist,
+  reachable: (p: string) => Promise<boolean> = volumeReachable,
 ): Promise<boolean> {
   if (program.includes('/') && !path.isAbsolute(program)) return false;
   const volume = /^\/Volumes\/[^/]+/.exec(program)?.[0];
-  return !volume || exists(volume);
+  return !volume || reachable(volume);
 }
 
 async function readPlistProgram(plistPath: string): Promise<string | null> {

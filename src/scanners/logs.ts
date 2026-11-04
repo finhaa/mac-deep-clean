@@ -5,7 +5,7 @@ import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
 // Folders under a Logs directory that another scanner reports on its own.
-const OWNED_BY_OTHER_SCANNERS = ['DiagnosticReports', 'JetBrains'];
+export const OWNED_BY_OTHER_SCANNERS = ['DiagnosticReports', 'JetBrains'];
 
 export class LogsScanner extends BaseScanner {
   readonly name = 'Logs';

@@ -1,8 +1,7 @@
 import os from 'node:os';
 import type { CleanResult, ScanResult } from '../types.js';
 import { run } from '../utils/exec.js';
-import { getSize, pathExists } from '../utils/fs.js';
-import { assertSafeToDelete } from '../utils/paths.js';
+import { getSize, pathExists, resolveDeletionTarget } from '../utils/fs.js';
 import { BaseScanner } from './base-scanner.js';
 
 export interface TempCandidate {
@@ -53,7 +52,7 @@ export class TempFilesScanner extends BaseScanner {
     const user = process.env.USER ?? '';
     for (const r of results) {
       try {
-        assertSafeToDelete(r.path);
+        await resolveDeletionTarget(r.path);
         if (dryRun) {
           freed += r.size;
           continue;

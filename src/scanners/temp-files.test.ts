@@ -83,4 +83,24 @@ describe('TempFilesScanner', () => {
     expect(freed).toBe(0);
     expect(errors[0]).toContain('near-root');
   });
+
+  it('refuses a temp dir that reaches a protected path through a symlinked parent', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    await fs.symlink('/usr', path.join(dir, 'link'));
+    const { freed, errors } = await new TempFilesScanner().clean(
+      [
+        {
+          path: path.join(dir, 'link', 'bin'),
+          size: 5,
+          label: 'x',
+          category: 'temp-files',
+          risk: 'moderate',
+        },
+      ],
+      true,
+    );
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('protected');
+  });
 });

@@ -100,6 +100,35 @@ describe('GitTmpPacksScanner.scan', () => {
   });
 });
 
+describe('GitTmpPacksScanner with a symlinked pack directory', () => {
+  async function linkedPackDir(): Promise<{ outside: string; viaLink: string }> {
+    const outside = await writeAged(path.join(root, 'elsewhere/tmp_pack_out'), 60);
+    await fs.mkdir(path.join(root, 'repo/.git/objects'), { recursive: true });
+    await fs.symlink(path.join(root, 'elsewhere'), path.join(root, 'repo/.git/objects/pack'));
+    return { outside, viaLink: packFile('repo', 'tmp_pack_out') };
+  }
+
+  it('does not report a file that really lives outside the repository', async () => {
+    await linkedPackDir();
+
+    expect(await scanner().scan()).toEqual([]);
+  });
+
+  it('refuses to delete through the link and leaves the real file alone', async () => {
+    const { outside, viaLink } = await linkedPackDir();
+    const size = (await fs.stat(outside)).size;
+
+    const { freed, errors } = await scanner().clean(
+      [{ path: viaLink, size, label: 'x', category: 'git-tmp-packs', risk: 'moderate' }],
+      false,
+    );
+
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    await expect(fs.stat(outside)).resolves.toBeDefined();
+  });
+});
+
 describe('GitTmpPacksScanner.clean', () => {
   it('deletes only the selected stale file and reports its bytes', async () => {
     const stale = await writeAged(packFile('repo', 'tmp_pack_old'), 60);

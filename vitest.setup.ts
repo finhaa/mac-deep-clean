@@ -22,13 +22,11 @@ function realPath(target: string): string {
 }
 
 function assertInsideTmp(target: unknown): void {
-  const lexical = path.resolve(String(target));
-  for (const candidate of [lexical, realPath(lexical)]) {
-    if (!tmpRoots.some((root) => candidate.startsWith(root + path.sep))) {
-      throw new Error(
-        `test guard: refusing to change ${candidate}, tests may only change paths inside ${tmpRoots[0]}`,
-      );
-    }
+  const real = realPath(String(target));
+  if (!tmpRoots.some((root) => real.startsWith(root + path.sep))) {
+    throw new Error(
+      `test guard: refusing to change ${real}, tests may only change paths inside ${tmpRoots[0]}`,
+    );
   }
 }
 

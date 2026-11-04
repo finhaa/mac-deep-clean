@@ -57,6 +57,11 @@ describe('vitest.setup.ts delete guard', () => {
     expect(() => fs.rmSync(os.tmpdir())).toThrow(/test guard/);
   });
 
+  it('refuses a path whose parent does not exist, outside the temp dir', async () => {
+    const target = path.join('/usr/bin', 'mdc-no-such-dir', 'x');
+    await expect(fsp.rm(target, { force: true })).rejects.toThrow(/test guard/);
+  });
+
   it('refuses a path that climbs out of the temp dir', async () => {
     const climbing = path.join(os.tmpdir(), '..', '..', 'usr', 'bin', 'mdc-never-here');
     await expect(fsp.rm(climbing, { force: true })).rejects.toThrow(/test guard/);

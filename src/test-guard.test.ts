@@ -2,7 +2,8 @@ import fs, { rmSync as namedRmSync } from 'node:fs';
 import fsp, { rm as namedRm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { pathToFileURL } from 'node:url';
+import { describe, expect, it, vi } from 'vitest';
 
 const never = (base: string) => path.join(base, 'mdc-never-here');
 const outside = ['/usr/bin', os.homedir()];
@@ -102,5 +103,126 @@ describe('vitest.setup.ts delete guard', () => {
     fs.rmSync(a);
     await fsp.rm(dir, { recursive: true, force: true });
     await expect(fsp.stat(dir)).rejects.toThrow();
+  });
+
+  // Each of these is a path the kernel resolves differently from the string the guard sees. The targets are
+  // non-recursive calls on a directory the OS protects or on a name that does not exist, so a regressed guard
+  // fails the assertion without deleting or creating anything that matters.
+  describe('acts on the path the kernel acts on', () => {
+    async function linkTo(target: string): Promise<{ dir: string; link: string }> {
+      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const link = path.join(dir, 'link');
+      await fsp.symlink(target, link);
+      return { dir, link };
+    }
+
+    it('refuses a trailing slash on a symlink in the temp dir that points outside it', async () => {
+      const { dir, link } = await linkTo('/usr/bin');
+      await expect(fsp.rm(`${link}/`)).rejects.toThrow(/test guard/);
+      await expect(fsp.rmdir(`${link}/`)).rejects.toThrow(/test guard/);
+      expect(() => fs.rmSync(`${link}/`, { recursive: true, force: true })).toThrow(/test guard/);
+      expect(() => fs.rmSync(`${link}/.`)).toThrow(/test guard/);
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it('refuses to truncate through a symlink in the temp dir that points outside it', async () => {
+      const { dir, link } = await linkTo('/usr/bin/mdc-never-here');
+      await expect(fsp.truncate(link)).rejects.toThrow(/test guard/);
+      expect(() => fs.truncateSync(link)).toThrow(/test guard/);
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it('refuses a file: URL outside the temp dir, whatever the working directory', async () => {
+      const url = pathToFileURL('/usr/bin/mdc-never-here');
+      await expect(fsp.rm(url, { force: true })).rejects.toThrow(/test guard/);
+      expect(() => fs.rmSync(url, { force: true })).toThrow(/test guard/);
+    });
+
+    it('still accepts a file: URL inside the temp dir', async () => {
+      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const file = path.join(dir, 'f');
+      await fsp.writeFile(file, 'x');
+      await fsp.rm(pathToFileURL(file));
+      await expect(fsp.stat(file)).rejects.toThrow();
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it.each([
+      ['writeFile', (t: string) => fsp.writeFile(t, 'x')],
+      ['appendFile', (t: string) => fsp.appendFile(t, 'x')],
+      ['copyFile', (t: string) => fsp.copyFile(import.meta.filename, t)],
+    ])('refuses fsp.%s onto a path outside the temp dir', async (_name, call) => {
+      await expect(call('/usr/bin/mdc-never-here')).rejects.toThrow(/test guard/);
+    });
+
+    it('refuses the sync and callback flavours of writeFile, appendFile and copyFile', () => {
+      const target = '/usr/bin/mdc-never-here';
+      expect(() => fs.writeFileSync(target, 'x')).toThrow(/test guard/);
+      expect(() => fs.appendFileSync(target, 'x')).toThrow(/test guard/);
+      expect(() => fs.copyFileSync(import.meta.filename, target)).toThrow(/test guard/);
+      expect(() => fs.writeFile(target, 'x', () => {})).toThrow(/test guard/);
+      expect(() => fs.appendFile(target, 'x', () => {})).toThrow(/test guard/);
+      expect(() => fs.copyFile(import.meta.filename, target, () => {})).toThrow(/test guard/);
+    });
+
+    it('refuses a write through a symlink in the temp dir that points outside it', async () => {
+      const { dir, link } = await linkTo('/usr/bin/mdc-never-here');
+      await expect(fsp.writeFile(link, 'x')).rejects.toThrow(/test guard/);
+      await expect(fsp.copyFile(import.meta.filename, link)).rejects.toThrow(/test guard/);
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it('still lets a test write, append and copy inside the temp dir, and write to a file handle', async () => {
+      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const a = path.join(dir, 'a');
+      await fsp.writeFile(a, 'x');
+      await fsp.appendFile(a, 'y');
+      await fsp.copyFile(a, path.join(dir, 'b'));
+      fs.writeFileSync(path.join(dir, 'c'), 'z');
+      const handle = await fsp.open(path.join(dir, 'd'), 'w');
+      await fsp.writeFile(handle, 'h');
+      await handle.close();
+      expect((await fsp.readFile(path.join(dir, 'b'))).toString()).toBe('xy');
+      expect((await fsp.readFile(path.join(dir, 'd'))).toString()).toBe('h');
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it('refuses a Buffer path outside the temp dir', async () => {
+      await expect(fsp.rm(Buffer.from('/usr/bin/mdc-never-here'), { force: true })).rejects.toThrow(
+        /test guard/,
+      );
+    });
+
+    it('does not loop on a symlink cycle', async () => {
+      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      await fsp.symlink(path.join(dir, 'b'), path.join(dir, 'a'));
+      await fsp.symlink(path.join(dir, 'a'), path.join(dir, 'b'));
+      await expect(fsp.truncate(path.join(dir, 'a'))).rejects.toThrow(/ELOOP/);
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it('lets a test remove or move a symlink that points outside the temp dir', async () => {
+      const { dir, link } = await linkTo('/usr/bin');
+      await fsp.rename(link, path.join(dir, 'moved'));
+      await fsp.unlink(path.join(dir, 'moved'));
+      await fsp.symlink('/usr/bin', link);
+      await fsp.rm(link);
+      await expect(fsp.lstat(link)).rejects.toThrow();
+      await fsp.rm(dir, { recursive: true, force: true });
+    });
+
+    it.each([
+      ['the filesystem root', '/'],
+      ['the home folder itself', fs.realpathSync(os.homedir())],
+      ['the folder holding the home folder', path.dirname(fs.realpathSync(os.homedir()))],
+    ])('refuses to start when the temp dir is %s', async (_name, tmp) => {
+      vi.resetModules();
+      const spy = vi.spyOn(os, 'tmpdir').mockReturnValue(tmp);
+      try {
+        await expect(import('../vitest.setup')).rejects.toThrow(/test guard/);
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 });

@@ -84,6 +84,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folder itself and the real path of `HOME`.
 - A scanner error is stripped of terminal control characters before it reaches the
   spinner, like every other label.
+- A disk that is gone can leave a symlink in `/Volumes`: Orphaned LaunchAgents now treat
+  it as an unmounted volume, not as a missing program.
+- Temp files check `TMPDIR` after normalising it, so a `/tmp/../x` spelling no longer
+  passes for a folder inside `/tmp`.
+- Paths under `HOME` print as `~/...` only when they really are inside it, and
+  permission warnings are classified by whole folders, not by a shared name prefix.
+- `clean` no longer tells you to add flags you already passed when it skips an item.
+- The project scan keeps a result only when it lies inside its search root, using the
+  same case-insensitive containment check as the protected list.
 - Test runs refuse every delete outside the temp dir: `rm`, `rmdir`, `unlink`,
   `truncate`, `cp` and `rename`, in promise, callback and sync form, through named
   imports and through a symlinked parent.

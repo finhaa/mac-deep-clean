@@ -87,8 +87,8 @@ and only the ones you pick are deleted. With `--yes` only safe items are picked,
 and `--yes --risky` adds the moderate and risky ones except the irreversible
 items (their deletes cannot be undone): Time Machine and APFS snapshots, iOS
 backups, screen recording data, music libraries, the Docker system prune, Xcode
-Archives, Android virtual devices and JetBrains caches (LocalHistory lives
-there). They run only when you name their category, as in
+Archives, Android virtual devices, Electron app state (`--deep`) and JetBrains
+caches (LocalHistory lives there). They run only when you name their category, as in
 `clean --category time-machine --yes`, which then picks every item of it.
 Snapshots have no measurable size, so the list shows 0 B. APFS snapshots are `risky`: they appear only with
 `--category apfs-snapshots` or `--risky`, and the OS update and Time Machine
@@ -194,7 +194,7 @@ Plus two extra commands:
 ## Safety
 
 - Protected paths (`/System`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, …) are never touched, nor is any directory that _contains_ one of them.
-- Risky items (Docker, Electron app state via `--deep`) are excluded from cleanup unless you pass `--risky` or explicitly name their `--category` — including in `--yes` mode.
+- Risky items are excluded from cleanup unless you pass `--risky`, and the irreversible ones (Docker prune, Electron app state via `--deep`, snapshots, backups) also need their own `--category` — including in `--yes` mode.
 - `--dry-run` is 100% side-effect-free.
 - Docker uses `docker system prune`, not manual `rm`.
 - iOS simulators use `xcrun simctl delete`, not manual `rm`.

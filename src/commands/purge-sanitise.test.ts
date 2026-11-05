@@ -1,0 +1,50 @@
+import os from 'node:os';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const probe = vi.hoisted(() => ({ problem: null as string | null }));
+
+vi.mock('../scanners/project-artifacts.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../scanners/project-artifacts.js')>()),
+  checkPurgeRoot: vi.fn(async (root: string) => ({ real: root, problem: probe.problem })),
+}));
+
+import { purgeCommand } from './purge.js';
+
+const errors = () =>
+  vi
+    .mocked(console.error)
+    .mock.calls.map((c) => c.join(' '))
+    .join('\n');
+
+beforeEach(() => {
+  process.exitCode = undefined;
+  vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+});
+
+afterEach(() => {
+  process.exitCode = undefined;
+  vi.restoreAllMocks();
+});
+
+describe('purge --path terminal output', () => {
+  it('prints a refusal reason that carries an escape sequence as plain text', async () => {
+    probe.problem = '/opt/evil\u001b[2K\rname is inside /opt';
+
+    await purgeCommand({ path: [os.tmpdir()], yes: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(errors()).toContain('evil?[2K?name');
+    expect(errors()).not.toContain('\u001b');
+    expect(errors()).not.toContain('\r');
+  });
+
+  it('prints a path that is not a directory without its escape sequences', async () => {
+    await purgeCommand({ path: ['/definitely/not/a/dir\u001b[2K\rx'], yes: true });
+
+    expect(process.exitCode).toBe(1);
+    expect(errors()).toContain('Not a directory');
+    expect(errors()).toContain('dir?[2K?x');
+    expect(errors()).not.toContain('\u001b');
+  });
+});

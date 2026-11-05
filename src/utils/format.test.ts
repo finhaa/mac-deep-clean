@@ -56,6 +56,31 @@ describe('stripControl', () => {
     expect(stripControl('a b\u00a0c')).toBe('a b\u00a0c');
   });
 
+  it('also hides what reorders or hides text: bidi controls, zero-width characters and the byte order mark', () => {
+    const ranges: Array<[number, number]> = [
+      [0x200b, 0x200f],
+      [0x202a, 0x202e],
+      [0x2060, 0x2064],
+      [0x2066, 0x2069],
+      [0xfeff, 0xfeff],
+    ];
+    for (const [from, to] of ranges) {
+      for (const code of [from, to]) {
+        expect(stripControl(`a${String.fromCharCode(code)}b`), `U+${code.toString(16)}`).toBe(
+          'a?b',
+        );
+      }
+    }
+    expect(stripControl('evil\u202Egpj.exe')).toBe('evil?gpj.exe');
+  });
+
+  it('keeps the characters right next to those ranges', () => {
+    for (const code of [0x200a, 0x2010, 0x2029, 0x202f, 0x205f, 0x2065, 0x206a, 0xfefe, 0xff00]) {
+      const text = `a${String.fromCharCode(code)}b`;
+      expect(stripControl(text), `U+${code.toString(16)}`).toBe(text);
+    }
+  });
+
   it('keeps ordinary text, spaces and non-ASCII letters', () => {
     expect(stripControl('node_modules café 日本')).toBe('node_modules café 日本');
   });

@@ -45,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bidi overrides, zero-width characters and the byte order mark in file names now show as `?`
+  like other control characters, so a name cannot read as another one. `purge --path` also
+  strips control characters from the reason it refuses a folder and from a path that is not a
+  directory.
 - `clean --deep` no longer deletes risky Electron app state (conversations,
   workspaces) without `--risky`. Risk is now gated per item, including in
   `--yes` mode, matching the documented behavior.

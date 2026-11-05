@@ -29,13 +29,13 @@ export async function purgeCommand(options: PurgeOptions = {}): Promise<void> {
     for (const p of options.path) {
       const expanded = path.resolve(expandHome(p));
       if (!(await isDirectory(expanded))) {
-        console.error(chalk.red(`Not a directory: ${expanded}`));
+        console.error(chalk.red(`Not a directory: ${stripControl(expanded)}`));
         process.exitCode = 1;
         return;
       }
       const { real, problem } = await checkPurgeRoot(expanded);
       if (problem) {
-        console.error(chalk.red(`Refusing to purge from a search root: ${problem}`));
+        console.error(chalk.red(`Refusing to purge from a search root: ${stripControl(problem)}`));
         process.exitCode = 1;
         return;
       }

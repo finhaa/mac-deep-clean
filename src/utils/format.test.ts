@@ -98,6 +98,26 @@ describe('tildify with a HOME that is spelled unusually', () => {
     }
   });
 
+  it('shortens a precomposed path under a decomposed HOME', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/jose\u0301');
+      expect(fresh('/mdc-missing/jos\u00e9/proj')).toBe('~/proj');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it('resolves a path with dot segments before shortening it', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/home');
+      expect(fresh('/mdc-missing/home/proj/../other')).toBe('~/other');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
   it('shortens a decomposed spelling of HOME', async () => {
     try {
       const fresh = await freshTildify('/mdc-missing/jos\u00e9');

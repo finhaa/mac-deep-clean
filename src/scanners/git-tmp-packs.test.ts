@@ -74,6 +74,47 @@ describe('GitTmpPacksScanner.scan', () => {
     expect(await scanner().scan()).toEqual([]);
   });
 
+  it('draws the size line at exactly 10 MB', async () => {
+    const MB = 1024 * 1024;
+    await writeAged(packFile('repo', 'tmp_pack_edge'), 600, Buffer.alloc(10 * MB, 1));
+    await writeAged(packFile('repo', 'tmp_pack_short'), 600, Buffer.alloc(10 * MB - 1, 1));
+
+    const results = await scanner().scan();
+
+    expect(results.map((r) => path.basename(r.path))).toEqual(['tmp_pack_edge']);
+  });
+
+  it('draws the age line at 10 minutes', async () => {
+    await writeAged(packFile('repo', 'tmp_pack_nine'), 9);
+    const eleven = await writeAged(packFile('repo', 'tmp_pack_eleven'), 11);
+
+    const results = await scanner().scan();
+
+    expect(results.map((r) => r.path)).toEqual([eleven]);
+  });
+
+  it('only takes names that start with tmp_pack_', async () => {
+    await writeAged(packFile('repo', 'tmp_other'), 600);
+    await writeAged(packFile('repo', 'tmp_packed'), 600);
+
+    expect(await scanner().scan()).toEqual([]);
+  });
+
+  it('walks five levels below the search root and no deeper', async () => {
+    const shallow = await writeAged(path.join(root, 'a/b/c/repo/.git/objects/pack/tmp_pack_5'), 60);
+    await writeAged(path.join(root, 'a/b/c/d/repo/.git/objects/pack/tmp_pack_6'), 60);
+
+    const results = await scanner().scan();
+
+    expect(results.map((r) => r.path)).toEqual([shallow]);
+  });
+
+  it('does not look for repositories inside node_modules', async () => {
+    await writeAged(path.join(root, 'app/node_modules/dep/.git/objects/pack/tmp_pack_dep'), 60);
+
+    expect(await scanner().scan()).toEqual([]);
+  });
+
   it('copes with a linked worktree, whose .git is a file, and with repos that have no pack dir', async () => {
     await fs.mkdir(path.join(root, 'wt'), { recursive: true });
     await fs.writeFile(path.join(root, 'wt/.git'), 'gitdir: /elsewhere\n');
@@ -194,6 +235,35 @@ describe('GitTmpPacksScanner.clean refuses what is not a git pack folder', () =>
     label: 'x',
     category: 'git-tmp-packs',
     risk: 'moderate' as const,
+  });
+
+  it('keeps a tmp_pack file in a .git subfolder other than objects/pack', async () => {
+    const hook = await writeAged(path.join(root, 'repo/.git/hooks/sub/tmp_pack_x'), 60);
+
+    const { freed, errors } = await scanner().clean([item(hook)], false);
+
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    await expect(fs.stat(hook)).resolves.toBeDefined();
+  });
+
+  it('keeps a file in objects/pack whose name only starts with tmp_', async () => {
+    const other = await writeAged(packFile('repo', 'tmp_other'), 60);
+
+    const { freed, errors } = await scanner().clean([item(other)], false);
+
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    await expect(fs.stat(other)).resolves.toBeDefined();
+  });
+
+  it('keeps a tmp_pack file at the age line when the clean runs', async () => {
+    const nine = await writeAged(packFile('repo', 'tmp_pack_nine'), 9);
+
+    const { freed } = await scanner().clean([item(nine)], false);
+
+    expect(freed).toBe(0);
+    await expect(fs.stat(nine)).resolves.toBeDefined();
   });
 
   it('keeps a tmp_pack file in objects/pack of a folder that is not named .git', async () => {

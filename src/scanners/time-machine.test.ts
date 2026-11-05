@@ -54,6 +54,12 @@ describe('TimeMachineScanner.scan', () => {
     expect(results[0]?.label).toContain('2026-11-02-120000');
   });
 
+  it('asks tmutil for the snapshots of the boot volume', async () => {
+    await new TimeMachineScanner().scan();
+
+    expect(commands).toEqual(['tmutil listlocalsnapshots /']);
+  });
+
   it('marks the items virtual, because a snapshot has no measurable size', async () => {
     const results = await new TimeMachineScanner().scan();
 

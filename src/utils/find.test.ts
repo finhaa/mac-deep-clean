@@ -60,7 +60,16 @@ describe('findDirsNamed (real find)', () => {
     await fs.mkdir(path.join(root, 'a/b/c/d/node_modules'), { recursive: true });
 
     expect(await findDirsNamed(root, ['node_modules'], 3)).toEqual([]);
+    expect(await findDirsNamed(root, ['node_modules'], 4)).toEqual([]);
     expect(await findDirsNamed(root, ['node_modules'], 5)).toHaveLength(1);
+  });
+
+  it('ignores a regular file that carries a requested name', async () => {
+    await fs.mkdir(path.join(root, 'a'), { recursive: true });
+    await fs.writeFile(path.join(root, 'a/node_modules'), 'not a folder');
+    await fs.writeFile(path.join(root, 'b'), 'not a folder');
+
+    expect(await findDirsNamed(root, ['node_modules', 'b'], 5)).toEqual([]);
   });
 });
 

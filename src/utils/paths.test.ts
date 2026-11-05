@@ -242,3 +242,64 @@ describe('a HOME that is spelled through a symlink', () => {
     }
   });
 });
+
+describe('a path spelled with decomposed Unicode', () => {
+  it('compares equal to its precomposed spelling', () => {
+    expect(isInside('/tmp/café', '/tmp/café/x')).toBe(true);
+    expect(isInside('/tmp/café', '/tmp/café/x')).toBe(true);
+  });
+
+  it('keeps a HOME with an accent protected under either spelling', async () => {
+    try {
+      vi.resetModules();
+      vi.stubEnv('HOME', '/mdc-missing/josé');
+      const fresh = await import('./paths.js');
+      expect(fresh.isProtectedPath('/mdc-missing/josé/Documents/x')).toBe(true);
+      expect(fresh.isProtectedPath('/mdc-missing/josé')).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+});
+
+describe('a passwd home spelled through a symlink', () => {
+  it('protects the real folders behind it too', async () => {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-passwd-home-'));
+    try {
+      await fsp.mkdir(path.join(dir, 'real'));
+      await fsp.symlink(path.join(dir, 'real'), path.join(dir, 'link'));
+      vi.resetModules();
+      vi.stubEnv('HOME', '/mdc-missing/home');
+      vi.spyOn(os, 'userInfo').mockReturnValue({
+        homedir: path.join(dir, 'link'),
+      } as os.UserInfo<string>);
+      const fresh = await import('./paths.js');
+      const real = await fsp.realpath(path.join(dir, 'real'));
+      expect(fresh.isProtectedPath(path.join(real, 'Documents/x'))).toBe(true);
+    } finally {
+      vi.restoreAllMocks();
+      vi.unstubAllEnvs();
+      vi.resetModules();
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a home that does not exist', () => {
+  it('is listed once, as spelled', async () => {
+    try {
+      vi.resetModules();
+      vi.stubEnv('HOME', '/mdc-missing/home');
+      vi.spyOn(os, 'userInfo').mockReturnValue({
+        homedir: '/mdc-missing/home',
+      } as os.UserInfo<string>);
+      const fresh = await import('./paths.js');
+      expect(fresh.HOMES).toEqual(['/mdc-missing/home']);
+    } finally {
+      vi.restoreAllMocks();
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+});

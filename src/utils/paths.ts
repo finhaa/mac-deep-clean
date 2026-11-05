@@ -4,16 +4,19 @@ import path from 'node:path';
 
 export const HOME = os.homedir();
 
-// A HOME spelled through a symlink must protect the folders it really points at, so its real path counts too.
-function realHome(): string {
+function realpathOr(p: string): string {
   try {
-    return fs.realpathSync(HOME);
+    return fs.realpathSync(p);
   } catch {
-    return HOME;
+    return p;
   }
 }
 
-const HOMES: readonly string[] = [...new Set([HOME, os.userInfo().homedir, realHome()])];
+// A home spelled through a symlink must protect the folders it really points at, so every spelling of every
+// home counts, and so does each one's real path. Any list built from a home goes through this one.
+export const HOMES: readonly string[] = [
+  ...new Set([HOME, os.userInfo().homedir].flatMap((home) => [home, realpathOr(home)])),
+];
 
 const HOME_SUBTREES = [
   'Documents',
@@ -80,7 +83,7 @@ export function expandHome(p: string): string {
 }
 
 function fold(p: string): string {
-  return path.resolve(expandHome(p)).toLowerCase();
+  return path.resolve(expandHome(p)).normalize('NFC').toLowerCase();
 }
 
 /** True when `child` is `parent` or lies below it, ignoring case like the default macOS volume. */

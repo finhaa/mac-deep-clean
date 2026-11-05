@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { stripControl, tildify } from './format.js';
-import { HOME, isInside } from './paths.js';
+import { HOMES, isInside } from './paths.js';
 
 type WarningKind = 'fda' | 'sudo' | 'other';
 
@@ -22,7 +22,7 @@ const SYSTEM_ROOTS = ['/Library', '/private', '/System', '/usr'];
 
 function inferKind(target: string): WarningKind {
   const resolved = path.resolve(target);
-  if (isInside(path.join(HOME, 'Library'), resolved)) return 'fda';
+  if (HOMES.some((home) => isInside(path.join(home, 'Library'), resolved))) return 'fda';
   if (SYSTEM_ROOTS.some((root) => isInside(root, resolved))) return 'sudo';
   return 'other';
 }

@@ -8,6 +8,8 @@ const HOME = vi.hoisted(() => {
 
 import { addPermissionWarning, flushWarnings } from './warnings.js';
 
+const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+
 describe('permission warnings with a HOME under /private', () => {
   it('still point to Full Disk Access for ~/Library paths', () => {
     addPermissionWarning(`${HOME}/Library/Mail`, 150 * 1024 * 1024);
@@ -16,7 +18,7 @@ describe('permission warnings with a HOME under /private', () => {
     expect(message).toContain('~/Library/Mail');
   });
 
-  it('keep /private outside HOME as a system path', () => {
+  it.skipIf(isRoot)('keep /private outside HOME as a system path', () => {
     addPermissionWarning('/private/etc/x', 150 * 1024 * 1024);
     const [message] = flushWarnings();
     expect(message).toContain('root-owned');

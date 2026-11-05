@@ -34,7 +34,8 @@ export class MusicCreationScanner extends BaseScanner {
         category: this.category,
         risk: this.risk,
         irreversible: true,
-        description: 'Sound library — re-downloadable from the app',
+        description:
+          'Sound library — Apple content re-downloads from the app, your own instruments and presets do not',
       });
     }
     return results;

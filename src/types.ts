@@ -23,7 +23,11 @@ export interface ScanResult {
    * True when deleting the item destroys data that cannot be regenerated,
    * re-downloaded or restored (a backup, a snapshot, a recording, LocalHistory,
    * an archive). `clean --yes` never picks it from a broad `--risky`; the caller
-   * must name its `--category`. Every scanner that emits such an item sets it.
+   * must name its `--category`. Every scanner that emits such an item sets it,
+   * except four that are `moderate` on purpose: Mail Downloads and Trash (the
+   * owner's recorded decision), and the Maven repository and CocoaPods repos, whose
+   * only non-downloadable content is a local build that `mvn install` or
+   * `pod repo update` recreates.
    */
   irreversible?: boolean;
 }

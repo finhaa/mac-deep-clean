@@ -36,7 +36,10 @@ program
     'Skip prompts; selects only safe items unless --risky or --category is set (irreversible items need their own --category)',
   )
   .option('-c, --category <name>', 'Only clean a specific category')
-  .option('--deep', 'Include full Electron app state — requires --risky to clean')
+  .option(
+    '--deep',
+    'Include full Electron app state — needs --risky, and with --yes also --category electron',
+  )
   .action(async (opts) => {
     await cleanCommand(opts);
   });

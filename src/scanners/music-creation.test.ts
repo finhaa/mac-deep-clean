@@ -15,4 +15,13 @@ describe('MusicCreationScanner', () => {
       false,
     );
   });
+
+  it('says the user content is not re-downloadable, since every item is flagged irreversible', async () => {
+    const results = await new MusicCreationScanner().scan();
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.irreversible === true)).toBe(true);
+    expect(
+      results.every((r) => r.description?.includes('your own instruments and presets do not')),
+    ).toBe(true);
+  });
 });

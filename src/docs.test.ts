@@ -22,6 +22,12 @@ describe('README --yes', () => {
   });
 });
 
+describe('clean --deep help', () => {
+  it('says --yes also needs the electron category, like the README', () => {
+    expect(read('src/index.ts')).toContain('--category electron');
+  });
+});
+
 describe('README root advice', () => {
   it('does not say only system-cache needs a root run', () => {
     expect(read('README.md')).not.toMatch(/Only `system-cache`/);

@@ -22,6 +22,42 @@ describe('README --yes', () => {
   });
 });
 
+describe('README irreversible list', () => {
+  const readme = () => read('README.md').replace(/\s+/g, ' ');
+
+  it('names every irreversible kind of item the code flags', () => {
+    for (const phrase of [
+      'Time Machine and APFS snapshots',
+      'iOS backups',
+      'screen recording data',
+      'music libraries',
+      'the Docker system prune',
+      'Xcode Archives',
+      'Android virtual devices',
+      'Electron app state (`--deep`)',
+      'JetBrains caches',
+    ]) {
+      expect(readme(), phrase).toContain(phrase);
+    }
+  });
+
+  it('says --yes --risky leaves the irreversible items out and that their category picks them', () => {
+    expect(readme()).toContain('adds the moderate and risky ones except the irreversible items');
+    expect(readme()).toContain('They run only when you name their category');
+    expect(readme()).not.toMatch(/adds every item/i);
+  });
+});
+
+describe('clean help for --yes', () => {
+  it('says irreversible items need their own category and that --risky or --category widen the pick', () => {
+    const source = read('src/index.ts');
+    expect(source).toContain(
+      'Skip prompts; selects only safe items unless --risky or --category is set',
+    );
+    expect(source).toContain('irreversible items need their own --category');
+  });
+});
+
 describe('clean --deep help', () => {
   it('says --yes also needs the electron category, like the README', () => {
     expect(read('src/index.ts')).toContain('--category electron');

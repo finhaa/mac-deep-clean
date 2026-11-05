@@ -161,6 +161,27 @@ describe('cleanCommand --yes skip message', () => {
     expect(logged()).not.toContain('not safe');
   });
 
+  it('tells the user how to pick the skipped items in every variant', async () => {
+    await cleanCommand({ yes: true });
+    expect(logged()).toContain('Run without --yes to pick them, or add --risky for the rest.');
+    vi.mocked(console.log).mockClear();
+    vi.mocked(getAllScanners).mockReturnValue([safe, backups()] as never);
+    await cleanCommand({ yes: true, risky: true });
+    expect(logged()).toContain('Run without --yes to pick them.');
+    vi.mocked(console.log).mockClear();
+    vi.mocked(getAllScanners).mockReturnValue([venv()] as never);
+    await cleanCommand({ yes: true, category: 'project-artifacts' });
+    expect(logged()).toContain('Run without --yes to pick them.');
+  });
+
+  it('gives the category wording when --risky and --category are both given', async () => {
+    vi.mocked(getAllScanners).mockReturnValue([venv()] as never);
+    await cleanCommand({ yes: true, risky: true, category: 'project-artifacts' });
+    expect(logged()).toContain('Skipped 1 item(s) that are virtualenvs. Run without --yes');
+    expect(logged()).not.toContain('their own --category');
+    expect(logged()).not.toContain('--risky');
+  });
+
   it('does not ask for a category that was given', async () => {
     vi.mocked(getAllScanners).mockReturnValue([venv()] as never);
     await cleanCommand({ yes: true, category: 'project-artifacts' });

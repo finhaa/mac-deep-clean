@@ -22,6 +22,7 @@ vi.mock('../utils/fs.js', () => ({
 
 import type { ScannerReport } from '../types.js';
 import { run } from '../utils/exec.js';
+import { getSize, pathExists } from '../utils/fs.js';
 import { doctorCommand } from './doctor.js';
 
 const GB = 1024 ** 3;
@@ -175,6 +176,90 @@ describe('doctorCommand', () => {
       expect(output.includes('Low disk space')).toBe(low);
     },
   );
+
+  it('has no warning at exactly 20% free and only the filling-up one at exactly 10% free', async () => {
+    vi.mocked(run).mockResolvedValueOnce(ok(df(800_000, 200_000)));
+    state.reports = [];
+    await doctorCommand();
+    expect(output).toContain('(20.0%)');
+    expect(output).not.toContain('Disk filling up');
+    expect(output).not.toContain('Low disk space');
+
+    output = '';
+    vi.mocked(run).mockResolvedValueOnce(ok(df(900_000, 100_000)));
+    await doctorCommand();
+    expect(output).toContain('(10.0%)');
+    expect(output).toContain('Disk filling up');
+    expect(output).not.toContain('Low disk space');
+  });
+
+  it('recommends a category from 1 GiB up and not below it', async () => {
+    state.reports = [
+      report('logs', 'Logs', GB),
+      report('user-cache', 'User Caches', GB - 1),
+      report('spotify', 'Spotify', 1000 ** 3),
+    ];
+    await doctorCommand();
+    expect(output).toContain('--category logs');
+    expect(output).not.toContain('--category user-cache');
+    expect(output).not.toContain('--category spotify');
+  });
+
+  describe('top consumers', () => {
+    const MB = 1024 ** 2;
+    const sizes: Record<string, number> = {
+      'Library/Application Support': 100,
+      'Library/Containers': 200,
+      'Library/Group Containers': 300,
+      'Library/Caches': 400,
+      'Library/Developer': 500,
+      'Library/Logs': 600,
+      Documents: 700,
+      Downloads: 800,
+      Movies: 900,
+      Pictures: 1000,
+    };
+    const lines = () => output.split('\n').filter((line) => /^\s+\d+\. ~\//.test(line));
+
+    afterEach(() => {
+      vi.mocked(pathExists).mockImplementation(async () => false);
+      vi.mocked(getSize).mockImplementation(async () => 0);
+    });
+
+    it('lists the eight largest home folders, largest first, numbered from 1', async () => {
+      vi.mocked(pathExists).mockImplementation(async () => true);
+      vi.mocked(getSize).mockImplementation(async (target) => {
+        const rel = Object.keys(sizes).find((k) => target.endsWith(`/${k}`));
+        return (rel ? (sizes[rel] ?? 0) : 0) * MB;
+      });
+      state.reports = [];
+
+      await doctorCommand();
+
+      const shown = lines().map((line) => line.trim().split(/\s+/).slice(0, 2).join(' '));
+      expect(shown).toEqual([
+        '1. ~/Pictures',
+        '2. ~/Movies',
+        '3. ~/Downloads',
+        '4. ~/Documents',
+        '5. ~/Library/Logs',
+        '6. ~/Library/Developer',
+        '7. ~/Library/Caches',
+        '8. ~/Library/Group',
+      ]);
+    });
+
+    it('skips a folder that does not exist', async () => {
+      vi.mocked(pathExists).mockImplementation(async (target) => target.endsWith('/Movies'));
+      vi.mocked(getSize).mockImplementation(async () => 5 * MB);
+      state.reports = [];
+
+      await doctorCommand();
+
+      expect(lines()).toHaveLength(1);
+      expect(lines()[0]).toContain('~/Movies');
+    });
+  });
 
   it('shows 100% free instead of NaN on a volume that reports no blocks', async () => {
     vi.mocked(run).mockResolvedValueOnce(ok(df(0, 0)));

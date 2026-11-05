@@ -88,6 +88,32 @@ describe('command line wiring', () => {
     expect(calls.duplicates).toHaveBeenLastCalledWith('/other', { minSize: '5MB', top: '3' });
   });
 
+  it('prints the error and exits with code 1 when a command rejects', async () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const failure = new Error('boom');
+    calls.clean.mockRejectedValue(failure);
+    try {
+      await cli('clean');
+      expect(error).toHaveBeenCalledWith(failure);
+      expect(exit).toHaveBeenCalledTimes(1);
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      exit.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it('does not exit by itself when the command succeeds', async () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    try {
+      await cli('doctor');
+      expect(exit).not.toHaveBeenCalled();
+    } finally {
+      exit.mockRestore();
+    }
+  });
+
   it('runs doctor', async () => {
     await cli('doctor');
     expect(calls.doctor).toHaveBeenCalledTimes(1);

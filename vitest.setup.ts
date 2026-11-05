@@ -23,17 +23,10 @@ for (const root of tmpRoots) {
 
 // The path the kernel acts on. The parent is resolved natively, so a symlink inside the temp dir cannot lead a
 // change outside it. The leaf is resolved too when the call follows it (truncate, writes) or when the string
-// ends in "/", "/." or "/..", which makes the kernel follow a symlink there; otherwise it is left alone,
+// ends in "/", which makes the kernel follow a symlink there; otherwise it is left alone,
 // because removing a symlink removes only the link.
 function kernelPath(raw: string, followLeaf: boolean, hops = 0): string {
   const name = path.basename(raw);
-  if (name === '.' || name === '..') {
-    try {
-      return fs.realpathSync.native(raw);
-    } catch {
-      return path.resolve(raw);
-    }
-  }
   let parent = path.resolve(path.dirname(raw));
   try {
     parent = fs.realpathSync.native(path.dirname(raw));

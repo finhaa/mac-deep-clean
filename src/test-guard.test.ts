@@ -169,6 +169,7 @@ describe('vitest.setup.ts delete guard', () => {
       const { dir, link } = await linkTo('/usr/bin/mdc-never-here');
       await expect(fsp.writeFile(link, 'x')).rejects.toThrow(/test guard/);
       await expect(fsp.copyFile(import.meta.filename, link)).rejects.toThrow(/test guard/);
+      await expect(fsp.cp(import.meta.filename, link)).rejects.toThrow(/test guard/);
       await fsp.rm(dir, { recursive: true, force: true });
     });
 

@@ -285,3 +285,21 @@ describe('a passwd home spelled through a symlink', () => {
     }
   });
 });
+
+describe('a home that does not exist', () => {
+  it('is listed once, as spelled', async () => {
+    try {
+      vi.resetModules();
+      vi.stubEnv('HOME', '/mdc-missing/home');
+      vi.spyOn(os, 'userInfo').mockReturnValue({
+        homedir: '/mdc-missing/home',
+      } as os.UserInfo<string>);
+      const fresh = await import('./paths.js');
+      expect(fresh.HOMES).toEqual(['/mdc-missing/home']);
+    } finally {
+      vi.restoreAllMocks();
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+});

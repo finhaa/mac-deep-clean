@@ -108,6 +108,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and a symlink the call follows. The temp dir itself is refused when it is `/` or
   holds the home folder. Child processes (`rm`, `find -delete`) and calls that open
   a file for writing by descriptor are not covered.
+- The test that no two scanners offer the same path now runs in a temp home folder,
+  fails when a scanner that should find something offers nothing, and pins which
+  scanners may flag an item irreversible. `clean --help` says `--deep` with `--yes`
+  also needs `--category electron`, and Music Creation items no longer say they are
+  all re-downloadable. Mail Downloads, Trash, the Maven repository and CocoaPods repos
+  stay `moderate` on purpose.
 - Added tests that pin the production defaults every other test overrides, the risk
   tier of every scanner, the exact deletion targets of the browser, wallpaper,
   developer cache, music and Electron scanners, the symlinked `--exclude` and target

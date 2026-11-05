@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ScanResult } from '../types.js';
 import { findDirsNamed } from '../utils/find.js';
+import { tildify } from '../utils/format.js';
 import { getSize, isDirectory, pathExists } from '../utils/fs.js';
 import { HOME, HOMES, findProtectedDescendant, isInside, isProtectedPath } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
@@ -72,11 +73,10 @@ export class ProjectArtifactsScanner extends BaseScanner {
         if (!(await looksLikeBuildArtifact(target))) continue;
         const size = await getSize(target);
         if (size < 10 * 1024 * 1024) continue;
-        const relative = path.relative(HOME, target);
         results.push({
           path: target,
           size,
-          label: `~/${relative}`,
+          label: tildify(target),
           category: this.category,
           risk: this.risk,
           description: 'Build artifact — rebuilds from source on next build',

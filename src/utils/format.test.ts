@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { colorRisk, colorSize, formatBytes, stripControl, tildify, truncate } from './format.js';
 import { HOME } from './paths.js';
 
@@ -77,5 +77,54 @@ describe('tildify', () => {
 
   it('leaves a path outside HOME alone', () => {
     expect(tildify('/Volumes/disk/x')).toBe('/Volumes/disk/x');
+  });
+});
+
+describe('tildify with a HOME that is spelled unusually', () => {
+  async function freshTildify(home: string) {
+    vi.resetModules();
+    vi.stubEnv('HOME', home);
+    return (await import('./format.js')).tildify;
+  }
+
+  it('strips a trailing slash from HOME instead of slicing into the child name', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/home/');
+      expect(fresh('/mdc-missing/home/proj/one.bin')).toBe('~/proj/one.bin');
+      expect(fresh('/mdc-missing/home')).toBe('~');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it('shortens a precomposed path under a decomposed HOME', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/jose\u0301');
+      expect(fresh('/mdc-missing/jos\u00e9/proj')).toBe('~/proj');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it('resolves a path with dot segments before shortening it', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/home');
+      expect(fresh('/mdc-missing/home/proj/../other')).toBe('~/other');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it('shortens a decomposed spelling of HOME', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/jos\u00e9');
+      expect(fresh('/mdc-missing/jose\u0301/proj')).toBe('~/proj');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });

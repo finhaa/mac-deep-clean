@@ -1,3 +1,4 @@
+import path from 'node:path';
 import chalk from 'chalk';
 import type { Risk } from '../types.js';
 import { HOME, isInside } from './paths.js';
@@ -46,5 +47,7 @@ export function truncate(str: string, max: number): string {
 
 /** `~/x` for a path inside HOME; a sibling such as `<HOME>ael` is not inside it and stays as it is. */
 export function tildify(p: string): string {
-  return isInside(HOME, p) ? `~${p.slice(HOME.length)}` : p;
+  if (!isInside(HOME, p)) return p;
+  const home = path.resolve(HOME).normalize('NFC');
+  return `~${path.resolve(p).normalize('NFC').slice(home.length)}`;
 }

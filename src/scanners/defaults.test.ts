@@ -107,10 +107,30 @@ describe('resolveSearchRoots without explicit roots', () => {
     expect(await resolveSearchRoots(null)).toEqual([home('code')]);
   });
 
-  it('lists a folder once when another default name is a symlink to it', async () => {
+  it('ignores a default name that is a symlink, since a search root is a real folder', async () => {
     await fsp.mkdir(home('code'));
     await fsp.symlink(home('code'), home('Developer'));
     expect(await resolveSearchRoots(null)).toEqual([home('code')]);
+  });
+
+  it('lists a folder once when an explicit root is a symlink to another', async () => {
+    await fsp.mkdir(home('code'));
+    await fsp.symlink(home('code'), home('Developer'));
+    expect(await resolveSearchRoots([home('code'), home('Developer')])).toEqual([home('code')]);
+    expect(await resolveSearchRoots([home('Developer'), home('code')])).toEqual([
+      home('Developer'),
+    ]);
+  });
+
+  it('skips an explicit root that does not exist', async () => {
+    await fsp.mkdir(home('code'));
+    expect(await resolveSearchRoots([home('missing'), home('code')])).toEqual([home('code')]);
+  });
+
+  it('looks for its own node_modules from the folder that holds the running source', async () => {
+    const { ProjectArtifactsScanner } = await import('./project-artifacts.js');
+    const { ownDir } = new ProjectArtifactsScanner();
+    await expect(fsp.stat(path.join(ownDir, 'project-artifacts.ts'))).resolves.toBeDefined();
   });
 
   it('finds nothing in a home without project folders', async () => {

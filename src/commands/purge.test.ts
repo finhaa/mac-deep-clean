@@ -86,6 +86,23 @@ describe('purgeCommand --yes', () => {
     expect(rm()).not.toHaveBeenCalled();
   });
 
+  it('warns about a path that resolves to a protected one on a dry run, as a real run would', async () => {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-dry-'));
+    const link = path.join(dir, 'home');
+    await fsp.symlink(os.homedir(), link);
+    state.results = [art(path.join(link, '.ssh'))];
+
+    await purgeCommand({ yes: true, dryRun: true });
+
+    const printed = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .join('\n');
+    expect(printed).toContain('1 warning(s)');
+    expect(rm()).not.toHaveBeenCalled();
+    await fsp.rm(dir, { recursive: true, force: true });
+  });
+
   it('deletes nothing when the scan finds nothing', async () => {
     state.results = [];
     await purgeCommand({ yes: true });

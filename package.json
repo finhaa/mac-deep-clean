@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "lint": "biome check src/ vitest.config.ts vitest.setup.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.typecheck.json",
-    "format": "biome format --write src/",
+    "format": "biome format --write src/ vitest.config.ts vitest.setup.ts",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "engines": {

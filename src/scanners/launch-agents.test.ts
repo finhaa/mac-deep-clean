@@ -76,6 +76,18 @@ describe('canJudgeProgram through symlinks', () => {
     },
   );
 
+  it('judges a program path that runs through a regular file, which does not exist', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+    try {
+      await fs.writeFile(path.join(dir, 'file'), 'x');
+      expect(await canJudgeProgram(path.join(dir, 'file', 'bin', 'x'), async () => false)).toBe(
+        true,
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('judges a missing program under a real folder and under a live symlink', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
     try {

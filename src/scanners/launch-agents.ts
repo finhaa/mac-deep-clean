@@ -101,13 +101,34 @@ export async function volumeReachable(volume: string): Promise<boolean> {
   );
 }
 
+// The nearest ancestor that exists, resolved: a symlink an unmounted disk left behind is found by lstat but
+// does not resolve, and a folder we may not enter does not resolve either. Neither says the program is gone.
+async function resolveNearestAncestor(p: string): Promise<string | null> {
+  let current = p;
+  for (;;) {
+    try {
+      await fs.lstat(current);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      const parent = path.dirname(current);
+      if ((code !== 'ENOENT' && code !== 'ENOTDIR') || parent === current) return null;
+      current = parent;
+      continue;
+    }
+    return fs.realpath(current).catch(() => null);
+  }
+}
+
 // launchd resolves a relative path against its own working directory, and a program on an unmounted volume
-// is not missing, only out of reach: neither is evidence of an orphan.
+// is not missing, only out of reach, whether the path names the volume or reaches it through a symlink:
+// none of these is evidence of an orphan.
 export async function canJudgeProgram(
   program: string,
   reachable: (p: string) => Promise<boolean> = volumeReachable,
 ): Promise<boolean> {
-  if (program.includes('/') && !path.isAbsolute(program)) return false;
+  if (!program.includes('/')) return true;
+  if (!path.isAbsolute(program)) return false;
+  if ((await resolveNearestAncestor(program)) === null) return false;
   const volume = /^\/Volumes\/[^/]+/.exec(program)?.[0];
   return !volume || reachable(volume);
 }

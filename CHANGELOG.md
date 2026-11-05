@@ -85,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A scanner error is stripped of terminal control characters before it reaches the
   spinner, like every other label.
 - A disk that is gone can leave a symlink in `/Volumes`: Orphaned LaunchAgents now treat
-  it as an unmounted volume, not as a missing program.
+  it as an unmounted volume, not as a missing program, and so does a program reached
+  through any other symlink that no longer resolves.
 - Temp files check `TMPDIR` after normalising it, so a `/tmp/../x` spelling no longer
   passes for a folder inside `/tmp`.
 - Paths under `HOME` print as `~/...` only when they really are inside it, and

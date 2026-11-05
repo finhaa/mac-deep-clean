@@ -43,6 +43,68 @@ describe('canJudgeProgram', () => {
   });
 });
 
+describe('canJudgeProgram through symlinks', () => {
+  it('judges a program on a volume that is gone by its default reachability check', async () => {
+    expect(await canJudgeProgram('/Volumes/mdc-gone-disk/bin/x')).toBe(false);
+  });
+
+  it('cannot judge a program behind a symlink an unmounted disk left dangling', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+    try {
+      await fs.symlink('/Volumes/mdc-gone-disk', path.join(dir, 'Dangling'));
+      expect(await canJudgeProgram(path.join(dir, 'Dangling', 'bin', 'x'), async () => true)).toBe(
+        false,
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    'cannot judge a program inside a folder it may not enter',
+    async () => {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+      const locked = path.join(dir, 'Locked');
+      try {
+        await fs.mkdir(locked);
+        await fs.chmod(locked, 0o000);
+        expect(await canJudgeProgram(path.join(locked, 'bin', 'x'), async () => true)).toBe(false);
+      } finally {
+        await fs.chmod(locked, 0o755);
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('judges a program path that runs through a regular file, which does not exist', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+    try {
+      await fs.writeFile(path.join(dir, 'file'), 'x');
+      expect(await canJudgeProgram(path.join(dir, 'file', 'bin', 'x'), async () => false)).toBe(
+        true,
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('judges a missing program under a real folder and under a live symlink', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+    try {
+      await fs.mkdir(path.join(dir, 'Real'));
+      await fs.symlink(path.join(dir, 'Real'), path.join(dir, 'Alias'));
+      expect(await canJudgeProgram(path.join(dir, 'Real', 'bin', 'x'), async () => false)).toBe(
+        true,
+      );
+      expect(await canJudgeProgram(path.join(dir, 'Alias', 'bin', 'x'), async () => false)).toBe(
+        true,
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('volumeReachable', () => {
   it('follows a symlink, so one left behind by an unmounted disk is not reachable', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-volume-'));

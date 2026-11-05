@@ -66,8 +66,8 @@ describe('ProjectArtifactsScanner.scan labels', () => {
 
     const [result] = await scanner(root).scan();
 
-    expect(result.path).toBe(found);
-    expect(result.label).toBe(found);
+    expect(result?.path).toBe(found);
+    expect(result?.label).toBe(found);
   });
 });
 

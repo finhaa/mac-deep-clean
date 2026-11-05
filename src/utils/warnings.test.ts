@@ -69,6 +69,53 @@ describe('permission warnings', () => {
     expect(message).toContain('(+2 more)');
   });
 
+  it.each([
+    ['Full Disk Access', () => path.join(HOME, 'Library/Mail')],
+    ['unreadable', () => '/Volumes/disk/dir'],
+  ])('draw the noise line at exactly 100 MB for the %s bucket', (text, target) => {
+    addPermissionWarning(target(), 100 * MB - 1);
+    expect(flushWarnings()).toEqual([]);
+    addPermissionWarning(target(), 100 * MB);
+    const [message] = flushWarnings();
+    expect(message).toContain(text);
+  });
+
+  it.skipIf(isRoot)('draw the noise line at exactly 100 MB for the sudo bucket', () => {
+    addPermissionWarning('/Library/Caches/x', 100 * MB - 1);
+    expect(flushWarnings()).toEqual([]);
+    addPermissionWarning('/Library/Caches/x', 100 * MB);
+    expect(flushWarnings()[0]).toContain('root-owned');
+  });
+
+  it('add up the bytes of several paths against the noise line', () => {
+    addPermissionWarning('/Volumes/disk/a', 60 * MB);
+    addPermissionWarning('/Volumes/disk/b', 40 * MB);
+    expect(flushWarnings()[0]).toContain('2 other path(s) were unreadable');
+  });
+
+  it('list every path when there are exactly three and say nothing more', () => {
+    for (const n of [1, 2, 3]) addPermissionWarning(`/Volumes/disk/dir${n}`, 50 * MB);
+    const [message] = flushWarnings();
+    const listed = message?.split('\n').filter((line) => line.includes('/Volumes/disk/dir'));
+    expect(listed).toHaveLength(3);
+    expect(message).not.toContain('more)');
+  });
+
+  it('list three of four paths and count the one left out', () => {
+    for (const n of [1, 2, 3, 4]) addPermissionWarning(`/Volumes/disk/dir${n}`, 50 * MB);
+    const [message] = flushWarnings();
+    const listed = message?.split('\n').filter((line) => line.includes('/Volumes/disk/dir'));
+    expect(listed).toHaveLength(3);
+    expect(message).toContain('(+1 more)');
+  });
+
+  it('list a repeated path once', () => {
+    for (let i = 0; i < 4; i++) addPermissionWarning('/Volumes/disk/same', 50 * MB);
+    const [message] = flushWarnings();
+    expect(message?.split('/Volumes/disk/same')).toHaveLength(2);
+    expect(message).not.toContain('more)');
+  });
+
   it('print a path with control characters as plain text', () => {
     addPermissionWarning('/Volumes/disk/evil\u001b[2Jname', 150 * MB);
     const [message] = flushWarnings();

@@ -114,6 +114,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also needs `--category electron`, and Music Creation items no longer say they are
   all re-downloadable. Mail Downloads, Trash, the Maven repository and CocoaPods repos
   stay `moderate` on purpose.
+- `npm run format` now covers the same files as `npm run lint`, including the
+  Vitest config and setup files. Tests pin where the tool looks for its own
+  `node_modules`, that explicit search roots are listed once and that a dry run of
+  `purge` warns about a path that resolves to a protected one.
 - Added tests that pin the production defaults every other test overrides, the risk
   tier of every scanner, the exact deletion targets of the browser, wallpaper,
   developer cache, music and Electron scanners, the symlinked `--exclude` and target

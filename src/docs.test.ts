@@ -28,6 +28,17 @@ describe('clean --deep help', () => {
   });
 });
 
+describe('package.json scripts', () => {
+  it('formats the same files it lints', () => {
+    const { scripts } = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
+    const targets = (script: string | undefined, prefix: string) =>
+      (script ?? '').replace(prefix, '').trim().split(/\s+/).sort();
+    expect(targets(scripts.format, 'biome format --write')).toEqual(
+      targets(scripts.lint, 'biome check'),
+    );
+  });
+});
+
 describe('README root advice', () => {
   it('does not say only system-cache needs a root run', () => {
     expect(read('README.md')).not.toMatch(/Only `system-cache`/);

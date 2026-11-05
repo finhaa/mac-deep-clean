@@ -86,11 +86,11 @@ describe('GitTmpPacksScanner.scan', () => {
 
   it('draws the age line at 10 minutes', async () => {
     await writeAged(packFile('repo', 'tmp_pack_nine'), 9);
-    const eleven = await writeAged(packFile('repo', 'tmp_pack_eleven'), 11);
+    const justPast = await writeAged(packFile('repo', 'tmp_pack_past'), 10.5);
 
     const results = await scanner().scan();
 
-    expect(results.map((r) => r.path)).toEqual([eleven]);
+    expect(results.map((r) => r.path)).toEqual([justPast]);
   });
 
   it('only takes names that start with tmp_pack_', async () => {

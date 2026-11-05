@@ -213,7 +213,7 @@ describe('TempFilesScanner', () => {
     await fs.writeFile(justPast, 'x');
     await fs.writeFile(justUnder, 'x');
     await age(justPast, 24.5 * 60 * 60 * 1000);
-    await age(justUnder, 23 * 60 * 60 * 1000);
+    await age(justUnder, 23.5 * 60 * 60 * 1000);
 
     await new TempFilesScanner().clean([result(dir)], false);
 

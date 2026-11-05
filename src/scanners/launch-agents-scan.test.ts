@@ -1,8 +1,13 @@
+import { existsSync } from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const h = vi.hoisted(() => ({ home: '', plists: new Map<string, string>() }));
+const h = vi.hoisted(() => ({
+  home: '',
+  plists: new Map<string, string>(),
+  presentAtBootout: [] as boolean[],
+}));
 
 vi.mock('../utils/paths.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../utils/paths.js')>();
@@ -15,6 +20,10 @@ vi.mock('../utils/paths.js', async (importOriginal) => {
 vi.mock('../utils/exec.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../utils/exec.js')>()),
   run: vi.fn(async (command: string) => {
+    if (command.startsWith('launchctl bootout')) {
+      const file = /'([^']+)'$/.exec(command)?.[1];
+      h.presentAtBootout.push(file !== undefined && existsSync(file));
+    }
     for (const [file, json] of h.plists) {
       if (command.includes(`'${file}'`)) return { stdout: json, stderr: '', code: 0 };
     }
@@ -36,6 +45,7 @@ async function agent(name: string, json: string): Promise<string> {
 
 beforeEach(async () => {
   h.plists.clear();
+  h.presentAtBootout.length = 0;
   await fsp.rm(path.join(h.home, 'Library'), { recursive: true, force: true });
 });
 
@@ -140,6 +150,7 @@ describe('LaunchAgentsScanner.clean', () => {
     expect(bootouts()).toHaveLength(1);
     expect(bootouts()[0]).toMatch(/^launchctl bootout gui\/\d+ /);
     expect(bootouts()[0]).toContain(`'${file}'`);
+    expect(h.presentAtBootout).toEqual([true]);
     await expect(fsp.stat(file)).rejects.toThrow();
   });
 

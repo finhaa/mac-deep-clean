@@ -178,6 +178,13 @@ describe('container directories stay exact-match so their children remain deleta
   });
 });
 
+describe('isInside with the filesystem root', () => {
+  it('holds everything when the parent is /', () => {
+    expect(isInside('/', '/')).toBe(true);
+    expect(isInside('/', '/opt/homebrew')).toBe(true);
+  });
+});
+
 describe('isInside', () => {
   it('matches the folder itself and anything below it, whatever the case', () => {
     expect(isInside('/Applications', '/Applications')).toBe(true);

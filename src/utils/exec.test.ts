@@ -67,6 +67,26 @@ describe('asInvokingUser', () => {
     }
   });
 
+  it('refuses a SUDO_USER that carries a dollar sign, which the shell would expand', () => {
+    asRoot('rafa$HOME');
+    expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
+    asRoot('$USER');
+    expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
+  });
+
+  it('accepts the characters a plain user name may hold', () => {
+    asRoot('Rafa.Lima_2-b');
+    expect(asInvokingUser('x')).toBe(`sudo -u Rafa.Lima_2-b -H bash -lc 'x'`);
+  });
+
+  it('leaves the command alone for any non-root uid and where getuid does not exist', () => {
+    process.getuid = () => 502;
+    vi.stubEnv('SUDO_USER', 'rafa');
+    expect(asInvokingUser('brew cleanup')).toBe('brew cleanup');
+    process.getuid = undefined as unknown as typeof process.getuid;
+    expect(asInvokingUser('brew cleanup')).toBe('brew cleanup');
+  });
+
   it('re-runs the command as the invoking user under sudo and escapes single quotes', () => {
     asRoot('rafa');
     expect(asInvokingUser("echo 'hi'")).toBe(`sudo -u rafa -H bash -lc 'echo '\\''hi'\\'''`);

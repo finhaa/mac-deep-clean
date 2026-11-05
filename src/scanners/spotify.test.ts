@@ -7,6 +7,8 @@ vi.mock('../utils/fs.js', () => ({
   getSize: vi.fn(async () => sizes.value),
 }));
 
+import path from 'node:path';
+import { HOME } from '../utils/paths.js';
 import { SpotifyScanner } from './spotify.js';
 
 beforeEach(() => {
@@ -14,6 +16,24 @@ beforeEach(() => {
 });
 
 describe('SpotifyScanner', () => {
+  it('reports exactly the two PersistentCache folders under the home folder, each with its label', async () => {
+    const results = await new SpotifyScanner().scan();
+
+    expect(results.map((r) => [r.path, r.label])).toEqual([
+      [
+        path.join(HOME, 'Library/Application Support/Spotify/PersistentCache'),
+        'Spotify PersistentCache (App Support)',
+      ],
+      [
+        path.join(
+          HOME,
+          'Library/Containers/com.spotify.client/Data/Library/Application Support/Spotify/PersistentCache',
+        ),
+        'Spotify PersistentCache (Container)',
+      ],
+    ]);
+  });
+
   it('reports both PersistentCache folders', async () => {
     const paths = (await new SpotifyScanner().scan()).map((r) => r.path);
     expect(paths).toHaveLength(2);

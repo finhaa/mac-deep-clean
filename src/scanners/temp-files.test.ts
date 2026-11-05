@@ -3,13 +3,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const seen = vi.hoisted(() => ({ commands: [] as string[] }));
+const seen = vi.hoisted(() => ({
+  commands: [] as string[],
+  failWith: null as { stderr: string; code: number } | null,
+}));
 vi.mock('../utils/exec.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../utils/exec.js')>();
   return {
     ...actual,
     run: async (command: string, options?: Parameters<typeof actual.run>[1]) => {
       seen.commands.push(command);
+      if (seen.failWith) return { stdout: '', ...seen.failWith };
       return actual.run(command, options);
     },
   };
@@ -23,6 +27,7 @@ let dir: string | undefined;
 afterEach(async () => {
   if (dir) await fs.rm(dir, { recursive: true, force: true });
   dir = undefined;
+  seen.failWith = null;
 });
 
 describe('tempCandidates', () => {
@@ -199,6 +204,55 @@ describe('TempFilesScanner', () => {
     expect(errors).toEqual([]);
     await expect(fs.stat(older)).rejects.toThrow();
     await expect(fs.stat(younger)).resolves.toBeDefined();
+  });
+
+  it('draws the age line just past 24 hours, not a day and a bit later', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    const justPast = path.join(dir, 'just-past.bin');
+    const justUnder = path.join(dir, 'just-under.bin');
+    await fs.writeFile(justPast, 'x');
+    await fs.writeFile(justUnder, 'x');
+    await age(justPast, 24.5 * 60 * 60 * 1000);
+    await age(justUnder, 23.5 * 60 * 60 * 1000);
+
+    await new TempFilesScanner().clean([result(dir)], false);
+
+    await expect(fs.stat(justPast)).rejects.toThrow();
+    await expect(fs.stat(justUnder)).resolves.toBeDefined();
+  });
+
+  it('quotes a temp dir whose name holds spaces, quotes and a dollar sign', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    const odd = path.join(dir, `it's a "dir" $HOME`);
+    await fs.mkdir(odd);
+    const old = path.join(odd, 'old.bin');
+    await fs.writeFile(old, Buffer.alloc(1000));
+    await age(old, 3 * DAY_MS);
+
+    const { errors, freed } = await new TempFilesScanner().clean([result(odd)], false);
+
+    expect(errors).toEqual([]);
+    expect(freed).toBeGreaterThan(0);
+    await expect(fs.stat(old)).rejects.toThrow();
+  });
+
+  it('reports find stderr when find fails and frees nothing', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    seen.failWith = { stderr: 'find: boom\n', code: 1 };
+
+    const { errors, freed } = await new TempFilesScanner().clean([result(dir)], false);
+
+    expect(freed).toBe(0);
+    expect(errors).toEqual([`${dir}: find: boom`]);
+  });
+
+  it('names the exit code when find fails without a message', async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-temp-'));
+    seen.failWith = { stderr: '  \n', code: 2 };
+
+    const { errors } = await new TempFilesScanner().clean([result(dir)], false);
+
+    expect(errors).toEqual([`${dir}: find exited 2`]);
   });
 
   it('removes files only, never an old folder', async () => {

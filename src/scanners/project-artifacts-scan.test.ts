@@ -60,6 +60,17 @@ describe('ProjectArtifactsScanner.scan with hostile directory names', () => {
   });
 });
 
+describe('ProjectArtifactsScanner.scan labels', () => {
+  it('labels a result outside HOME with its own path, not a climb out of ~', async () => {
+    const found = await artifact(path.join(root, 'p/node_modules'));
+
+    const [result] = await scanner(root).scan();
+
+    expect(result.path).toBe(found);
+    expect(result.label).toBe(found);
+  });
+});
+
 describe('ProjectArtifactsScanner.scan default self-protect', () => {
   it('never offers the node_modules of the tool it is running from', async () => {
     const repoRoot = path.resolve(import.meta.dirname, '../..');

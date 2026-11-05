@@ -84,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folder itself and the real path of `HOME`.
 - A scanner error is stripped of terminal control characters before it reaches the
   spinner, like every other label.
+- `~` display shortening strips the resolved home, so a home with a trailing slash no
+  longer prints `~proj/one.bin`, and `purge` labels a result outside the home with its
+  own path instead of `~/../..`.
 - Every path list built from the home folder now covers each spelling of it and its
   real path: `purge --path` refuses `~/Library` reached through a symlinked home, and
   permission warnings classify it as Full Disk Access. Paths are compared in one Unicode

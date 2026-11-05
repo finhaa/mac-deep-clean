@@ -101,9 +101,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `clean` no longer tells you to add flags you already passed when it skips an item.
 - The project scan keeps a result only when it lies inside its search root, using the
   same case-insensitive containment check as the protected list.
-- Test runs refuse every delete outside the temp dir: `rm`, `rmdir`, `unlink`,
-  `truncate`, `cp` and `rename`, in promise, callback and sync form, through named
-  imports and through a symlinked parent.
+- Test runs refuse the Node file calls that delete, move, overwrite or truncate
+  outside the temp dir: `rm`, `rmdir`, `unlink`, `rename`, `truncate`, `cp`,
+  `copyFile`, `writeFile` and `appendFile`, in promise, callback and sync form,
+  through named imports, `file:` URLs, Buffers, a symlinked parent, a trailing slash
+  and a symlink the call follows. The temp dir itself is refused when it is `/` or
+  holds the home folder. Child processes (`rm`, `find -delete`) and calls that open
+  a file for writing by descriptor are not covered.
 - Added tests that pin the production defaults every other test overrides, the risk
   tier of every scanner, the exact deletion targets of the browser, wallpaper,
   developer cache, music and Electron scanners, the symlinked `--exclude` and target

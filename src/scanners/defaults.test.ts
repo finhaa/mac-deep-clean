@@ -122,6 +122,16 @@ describe('resolveSearchRoots without explicit roots', () => {
     ]);
   });
 
+  it('keeps explicit roots in the order given', async () => {
+    await fsp.mkdir(home('code'));
+    await fsp.mkdir(home('work'));
+    await fsp.symlink(home('code'), home('Developer'));
+    expect(await resolveSearchRoots([home('code'), home('work'), home('Developer')])).toEqual([
+      home('code'),
+      home('work'),
+    ]);
+  });
+
   it('skips an explicit root that does not exist', async () => {
     await fsp.mkdir(home('code'));
     expect(await resolveSearchRoots([home('missing'), home('code')])).toEqual([home('code')]);

@@ -84,6 +84,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folder itself and the real path of `HOME`.
 - A scanner error is stripped of terminal control characters before it reaches the
   spinner, like every other label.
+- Every path list built from the home folder now covers each spelling of it and its
+  real path: `purge --path` refuses `~/Library` reached through a symlinked home, and
+  permission warnings classify it as Full Disk Access. Paths are compared in one Unicode
+  form, so a decomposed (NFD) spelling of a protected folder is protected too.
 - A disk that is gone can leave a symlink in `/Volumes`: Orphaned LaunchAgents now treat
   it as an unmounted volume, not as a missing program, and so does a program reached
   through any other symlink that no longer resolves.

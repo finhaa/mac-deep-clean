@@ -14,6 +14,16 @@ describe('programResolves', () => {
     expect(await programResolves('nope', async () => false)).toBe(false);
   });
 
+  it('looks a bare name up in the four launchd directories, in order', async () => {
+    const seen: string[] = [];
+    await programResolves('tool', async (p) => {
+      seen.push(p);
+      return false;
+    });
+    expect(seen).toEqual(['/usr/bin/tool', '/bin/tool', '/usr/sbin/tool', '/sbin/tool']);
+    expect(await programResolves('tool', async (p) => p === '/usr/sbin/tool')).toBe(true);
+  });
+
   it('never looks a bare name up relative to the working directory', async () => {
     expect(await programResolves('open', async (p) => p === 'open')).toBe(false);
   });

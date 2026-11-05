@@ -25,6 +25,7 @@ import type { BaseScanner } from './base-scanner.js';
 import { BrowserCacheScanner } from './browser-cache.js';
 import { ContainersScanner } from './containers.js';
 import { DevCacheScanner } from './dev-cache.js';
+import { ElectronAppsScanner } from './electron-apps.js';
 import { IosBackupsScanner } from './ios-backups.js';
 import { JetBrainsScanner } from './jetbrains.js';
 import { MailDownloadsScanner } from './mail-downloads.js';
@@ -143,6 +144,21 @@ describe('ContainersScanner', () => {
       'Library/Group Containers/group.example/Library/Caches',
     ]);
     expect(results[0]?.size).toBeGreaterThanOrEqual(results[1]?.size ?? 0);
+  });
+
+  it('draws the 10 MB line exactly, for containers and for group containers', async () => {
+    await put('Library/Containers/com.example.edge/Data/Library/Caches', 10 * MB);
+    await put('Library/Group Containers/group.edge/Library/Caches', 10 * MB);
+    await put('Library/Group Containers/group.short/Library/Caches', 10 * MB - 1);
+    expect(rel(await new ContainersScanner().scan())).toEqual([
+      'Library/Containers/com.example.edge/Data/Library/Caches',
+      'Library/Group Containers/group.edge/Library/Caches',
+    ]);
+  });
+
+  it('skips a hidden group container like a hidden container', async () => {
+    await put('Library/Group Containers/.hidden/Library/Caches', 30 * MB);
+    expect(await new ContainersScanner().scan()).toEqual([]);
   });
 
   it('leaves out the containers the wallpaper scanner owns', async () => {
@@ -292,6 +308,13 @@ describe('MusicCreationScanner', () => {
     const userLibrary = results.find((r) => r.path.startsWith(h.home));
     expect(userLibrary?.irreversible).toBe(true);
   });
+
+  it('draws the 100 MB line exactly', async () => {
+    await put('Library/Application Support/GarageBand', 100 * MB);
+    await put('Library/Application Support/Logic', 100 * MB - 1);
+    const ours = (await new MusicCreationScanner().scan()).filter((r) => r.path.startsWith(h.home));
+    expect(rel(ours)).toEqual(['Library/Application Support/GarageBand']);
+  });
 });
 
 describe('ScreenRecordingScanner', () => {
@@ -315,6 +338,19 @@ describe('UserCacheScanner', () => {
     await put('Library/Caches/.hidden', 900 * MB);
     const results = await new UserCacheScanner().scan();
     expect(rel(results)).toEqual(['Library/Caches/com.example.big']);
+  });
+
+  it('draws the 50 MB line exactly', async () => {
+    await put('Library/Caches/com.example.edge', 50 * MB);
+    expect(rel(await new UserCacheScanner().scan())).toEqual(['Library/Caches/com.example.edge']);
+  });
+
+  it('offers folders only, never a single big file that sits in ~/Library/Caches', async () => {
+    const file = path.join(h.home, 'Library/Caches/huge.bin');
+    await fsp.mkdir(path.dirname(file), { recursive: true });
+    await fsp.writeFile(file, 'x');
+    h.sizes.set(file, 900 * MB);
+    expect(await new UserCacheScanner().scan()).toEqual([]);
   });
 });
 
@@ -345,6 +381,26 @@ describe('BaseScanner.clean through a real scanner', () => {
     expect(freed).toBe(0);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain('Refusing to delete');
+  });
+});
+
+describe('WallpaperCacheScanner', () => {
+  const aerials = 'Library/Application Support/com.apple.wallpaper/aerials';
+
+  it('offers a folder from the first byte and nothing for an empty one', async () => {
+    await put(aerials, 0);
+    expect(await new WallpaperCacheScanner().scan()).toEqual([]);
+    await put(aerials, 1);
+    expect(rel(await new WallpaperCacheScanner().scan())).toEqual([aerials]);
+  });
+});
+
+describe('ElectronAppsScanner cache floor', () => {
+  it('draws the 1 MB line exactly', async () => {
+    const app = 'Library/Application Support/Claude';
+    await put(`${app}/Cache`, MB);
+    await put(`${app}/GPUCache`, MB - 1);
+    expect(rel(await new ElectronAppsScanner().scan())).toEqual([`${app}/Cache`]);
   });
 });
 

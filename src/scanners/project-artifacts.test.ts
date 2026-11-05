@@ -58,7 +58,24 @@ describe('isCheckedByDefault', () => {
   });
 });
 
+describe('looksLikeBuildArtifact markers', () => {
+  it.each(['pom.xml', 'build.sbt'])('accepts a target folder next to %s', async (marker) => {
+    const dir = path.join(root, `marker-${marker}`);
+    await fs.mkdir(path.join(dir, 'target'), { recursive: true });
+    await fs.writeFile(path.join(dir, marker), '');
+    expect(await looksLikeBuildArtifact(path.join(dir, 'target'))).toBe(true);
+  });
+});
+
 describe('isInsideLinkedWorktree', () => {
+  it('does not take a .git symlink for the file a linked worktree has', async () => {
+    const dir = path.join(root, 'linkgit');
+    await fs.mkdir(path.join(dir, 'pkg/node_modules'), { recursive: true });
+    await fs.writeFile(path.join(root, 'gitfile'), 'gitdir: /elsewhere\n');
+    await fs.symlink(path.join(root, 'gitfile'), path.join(dir, '.git'));
+    expect(await isInsideLinkedWorktree(path.join(dir, 'pkg/node_modules'), root)).toBe(false);
+  });
+
   it('is false for a normal checkout', async () => {
     expect(await isInsideLinkedWorktree(path.join(root, 'main/node_modules'), root)).toBe(false);
   });

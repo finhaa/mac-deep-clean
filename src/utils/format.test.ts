@@ -110,6 +110,19 @@ describe('tildify', () => {
     expect(tildify(`${HOME}ael/Library`)).toBe(`${HOME}ael/Library`);
   });
 
+  it('keeps the separator when HOME is the filesystem root', async () => {
+    vi.resetModules();
+    vi.stubEnv('HOME', '/');
+    try {
+      const fresh = (await import('./format.js')).tildify;
+      expect(fresh('/etc/x')).toBe('~/etc/x');
+      expect(fresh('/')).toBe('~');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
   it('leaves a path outside HOME alone', () => {
     expect(tildify('/Volumes/disk/x')).toBe('/Volumes/disk/x');
   });

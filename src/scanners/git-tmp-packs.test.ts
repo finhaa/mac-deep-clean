@@ -48,6 +48,14 @@ describe('GitTmpPacksScanner.scan', () => {
     expect(results[0]?.category).toBe('git-tmp-packs');
   });
 
+  it('labels a file outside HOME by its full path, not as a ~/.. climb', async () => {
+    const stale = await writeAged(packFile('repo', 'tmp_pack_label'), 30);
+
+    const results = await scanner().scan();
+
+    expect(results[0]?.label).toBe(stale);
+  });
+
   it('skips a tmp_pack file touched within the last 10 minutes (a fetch may still be writing it)', async () => {
     await writeAged(packFile('repo', 'tmp_pack_live'), 2);
 

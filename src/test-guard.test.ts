@@ -194,6 +194,15 @@ describe('vitest.setup.ts delete guard', () => {
       );
     });
 
+    it('refuses a Uint8Array path, which the kernel takes like a Buffer', async () => {
+      const bytes = new Uint8Array(Buffer.from('/usr/bin/mdc-never-here'));
+      await expect(fsp.rm(bytes, { force: true })).rejects.toThrow(/test guard/);
+      expect(() => fs.unlinkSync(bytes)).toThrow(/test guard/);
+      const padded = new Uint8Array(Buffer.from('xx/usr/bin/mdc-never-here'));
+      const view = padded.subarray(2);
+      expect(() => fs.rmSync(view)).toThrow(/test guard/);
+    });
+
     it('does not loop on a symlink cycle', async () => {
       const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
       await fsp.symlink(path.join(dir, 'b'), path.join(dir, 'a'));

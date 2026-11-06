@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { USER_NAME } from './exec.js';
 
 export const HOME = os.homedir();
 
@@ -14,8 +15,15 @@ function realpathOr(p: string): string {
 
 // A home spelled through a symlink must protect the folders it really points at, so every spelling of every
 // home counts, and so does each one's real path. Any list built from a home goes through this one.
+// Under `sudo -H` both HOME and the process identity are root's, so the user who ran sudo adds a home of their own.
+const SUDO_USER = process.env.SUDO_USER;
+const invokingHome =
+  SUDO_USER && SUDO_USER !== 'root' && USER_NAME.test(SUDO_USER) ? [`/Users/${SUDO_USER}`] : [];
+
 export const HOMES: readonly string[] = [
-  ...new Set([HOME, os.userInfo().homedir].flatMap((home) => [home, realpathOr(home)])),
+  ...new Set(
+    [HOME, os.userInfo().homedir, ...invokingHome].flatMap((home) => [home, realpathOr(home)]),
+  ),
 ];
 
 const HOME_SUBTREES = [

@@ -258,6 +258,33 @@ describe('a HOME that is spelled through a symlink', () => {
   });
 });
 
+describe('HOMES under sudo', () => {
+  async function homesWith(sudoUser: string | undefined) {
+    vi.resetModules();
+    vi.stubEnv('SUDO_USER', sudoUser);
+    return (await import('./paths.js')).HOMES;
+  }
+
+  it('lists the home of the user who ran sudo, which a sudo -H run does not put in HOME', async () => {
+    try {
+      expect(await homesWith('mdcalice')).toContain('/Users/mdcalice');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it.each(['root', '', '../etc', 'a b'])('adds nothing for SUDO_USER=%j', async (name) => {
+    try {
+      const without = await homesWith(undefined);
+      expect(await homesWith(name)).toEqual(without);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+});
+
 describe('a path spelled with decomposed Unicode', () => {
   it('compares equal to its precomposed spelling', () => {
     expect(isInside('/tmp/café', '/tmp/café/x')).toBe(true);

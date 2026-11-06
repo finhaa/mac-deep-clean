@@ -74,8 +74,18 @@ describe('stripControl', () => {
     expect(stripControl('evil\u202Egpj.exe')).toBe('evil?gpj.exe');
   });
 
+  it('hides every invisible format character, line separator and default-ignorable code point, not a listed few', () => {
+    const codes = [
+      0x00ad, 0x034f, 0x061c, 0x115f, 0x1160, 0x17b4, 0x180e, 0x2028, 0x2029, 0x206a, 0x206f,
+      0x3164, 0xfe00, 0xfe0f, 0xffa0, 0xfff9, 0xe0001, 0xe0041, 0xe007f, 0xe0100,
+    ];
+    for (const code of codes) {
+      expect(stripControl(`a${String.fromCodePoint(code)}b`), `U+${code.toString(16)}`).toBe('a?b');
+    }
+  });
+
   it('keeps the characters right next to those ranges', () => {
-    for (const code of [0x200a, 0x2010, 0x2029, 0x202f, 0x205f, 0x2065, 0x206a, 0xfefe, 0xff00]) {
+    for (const code of [0x00a0, 0x200a, 0x2010, 0x202f, 0x205f, 0xfefe, 0xff00]) {
       const text = `a${String.fromCharCode(code)}b`;
       expect(stripControl(text), `U+${code.toString(16)}`).toBe(text);
     }

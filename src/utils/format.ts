@@ -32,10 +32,9 @@ export function colorSize(bytes: number): string {
 }
 
 // File names and plist content are attacker-controlled text: a raw ESC or CR could overwrite the review line,
-// and a bidi override or a zero-width character makes one name read as another.
-const CONTROL_CHARS =
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
-  /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g;
+// and anything invisible (format characters such as bidi overrides, zero-width characters and tags, line and
+// paragraph separators, default-ignorable code points) makes one name read as another.
+const CONTROL_CHARS = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/gu;
 
 export function stripControl(str: string): string {
   return str.replace(CONTROL_CHARS, '?');

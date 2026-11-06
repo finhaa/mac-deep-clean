@@ -64,6 +64,21 @@ describe('clean --deep help', () => {
   });
 });
 
+describe('risky gate wording', () => {
+  const flat = (name: string) => read(name).replace(/\s+/g, ' ');
+
+  it('says a named --category lifts the risky filter, in the README safety list', () => {
+    expect(flat('README.md')).toContain(
+      'Risky items are excluded from cleanup unless you pass `--risky` or name their `--category`',
+    );
+  });
+
+  it('says --deep state needs --risky or the electron category, in the help and the changelog', () => {
+    expect(flat('src/index.ts')).toContain('needs --risky or --category electron');
+    expect(flat('CHANGELOG.md')).toContain('without `--risky` or `--category electron`');
+  });
+});
+
 describe('package.json scripts', () => {
   it('formats the same files it lints', () => {
     const { scripts } = JSON.parse(read('package.json')) as { scripts: Record<string, string> };

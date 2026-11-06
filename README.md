@@ -194,7 +194,7 @@ Plus two extra commands:
 ## Safety
 
 - Protected paths (`/System`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, …) are never touched, nor is any directory that _contains_ one of them.
-- Risky items are excluded from cleanup unless you pass `--risky`, and the irreversible ones (Docker prune, Electron app state via `--deep`, snapshots, backups) also need their own `--category` — including in `--yes` mode.
+- Risky items are excluded from cleanup unless you pass `--risky` or name their `--category`, and the irreversible ones (Docker prune, Electron app state via `--deep`, snapshots, backups) are picked in `--yes` mode only by their own `--category`.
 - `--dry-run` is 100% side-effect-free.
 - Docker uses `docker system prune`, not manual `rm`.
 - iOS simulators use `xcrun simctl delete`, not manual `rm`.

@@ -38,7 +38,7 @@ program
   .option('-c, --category <name>', 'Only clean a specific category')
   .option(
     '--deep',
-    'Include full Electron app state — needs --risky, and with --yes also --category electron',
+    'Include full Electron app state — needs --risky or --category electron, and with --yes only --category electron picks it',
   )
   .action(async (opts) => {
     await cleanCommand(opts);

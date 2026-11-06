@@ -50,8 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   strips control characters from the reason it refuses a folder and from a path that is not a
   directory.
 - `clean --deep` no longer deletes risky Electron app state (conversations,
-  workspaces) without `--risky`. Risk is now gated per item, including in
-  `--yes` mode, matching the documented behavior.
+  workspaces) without `--risky` or `--category electron`. Risk is now gated per item,
+  including in `--yes` mode, matching the documented behavior.
 - Temp Files cleanup now runs `assertSafeToDelete` before shelling out to
   `find`, and no longer reports space as freed when `find` fails.
 - Time Machine cleanup no longer reports success when every snapshot

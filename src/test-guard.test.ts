@@ -120,7 +120,7 @@ describe('vitest.setup.ts delete guard', () => {
       const { dir, link } = await linkTo('/usr/bin');
       await expect(fsp.rm(`${link}/`)).rejects.toThrow(/test guard/);
       await expect(fsp.rmdir(`${link}/`)).rejects.toThrow(/test guard/);
-      expect(() => fs.rmSync(`${link}/`, { recursive: true, force: true })).toThrow(/test guard/);
+      expect(() => fs.rmSync(`${link}/`)).toThrow(/test guard/);
       expect(() => fs.rmSync(`${link}/.`)).toThrow(/test guard/);
       await fsp.rm(dir, { recursive: true, force: true });
     });

@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 // HOME is read when paths.ts loads, so the scan never sees the real home folder or its search roots.
-const HOME = vi.hoisted(() => {
-  const home = `${process.env.TMPDIR ?? '/tmp'}/mdc-overlap-home-${process.pid}`;
+const HOME = await vi.hoisted(async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const home = mkdtempSync(join(tmpdir(), 'mdc-overlap-home-'));
   process.env.HOME = home;
   return home;
 });
@@ -81,6 +84,10 @@ const IRREVERSIBLE_IN_THIS_WORLD = [
   'music-creation',
   'screen-recording',
 ];
+
+afterAll(() => {
+  fs.rmSync(HOME, { recursive: true, force: true });
+});
 
 async function scanAll() {
   fs.mkdirSync(HOME, { recursive: true });

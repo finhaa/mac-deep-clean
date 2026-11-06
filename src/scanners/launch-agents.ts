@@ -119,6 +119,9 @@ async function resolveNearestAncestor(p: string): Promise<string | null> {
   }
 }
 
+// Every spelling of a mount point: any case (the default volume ignores it), and the data volume's firmlink.
+const VOLUME = /^(?:\/System\/Volumes\/Data)?\/Volumes\/[^/]+/i;
+
 // launchd resolves a relative path against its own working directory, and a program on an unmounted volume
 // is not missing, only out of reach, whether the path names the volume or reaches it through a symlink:
 // none of these is evidence of an orphan.
@@ -129,7 +132,7 @@ export async function canJudgeProgram(
   if (!program.includes('/')) return true;
   if (!path.isAbsolute(program)) return false;
   if ((await resolveNearestAncestor(program)) === null) return false;
-  const volume = /^\/Volumes\/[^/]+/.exec(program)?.[0];
+  const volume = VOLUME.exec(path.normalize(program))?.[0];
   return !volume || reachable(volume);
 }
 

@@ -51,6 +51,15 @@ describe('canJudgeProgram', () => {
     expect(await canJudgeProgram('/Volumes/Work/bin/x', mounted)).toBe(true);
     expect(await canJudgeProgram('/Volumes/Gone/bin/x', mounted)).toBe(false);
   });
+
+  it('reads the volume from the path as the kernel resolves it, not as it is spelled', async () => {
+    const mounted = async (p: string) => p === '/Volumes/Work';
+    expect(await canJudgeProgram('/Volumes/Work/../Gone/bin/x', mounted)).toBe(false);
+    expect(await canJudgeProgram('//Volumes/Gone/bin/x', mounted)).toBe(false);
+    expect(await canJudgeProgram('/volumes/Gone/bin/x', mounted)).toBe(false);
+    expect(await canJudgeProgram('/System/Volumes/Data/Volumes/Gone/bin/x', mounted)).toBe(false);
+    expect(await canJudgeProgram('/Volumes/Work/./bin/x', mounted)).toBe(true);
+  });
 });
 
 describe('canJudgeProgram through symlinks', () => {

@@ -181,6 +181,19 @@ describe('LaunchAgentsScanner.clean', () => {
     expect(bootouts()).toEqual([]);
   });
 
+  it('does not try to unload a plist in a folder that only starts with the LaunchAgents path', async () => {
+    vi.mocked(run).mockClear();
+    const item = {
+      path: path.join(h.home, 'Library/LaunchAgentsOld/x.plist'),
+      size: 1,
+      label: 'x',
+      category: 'launch-agents',
+      risk: 'moderate' as const,
+    };
+    await new LaunchAgentsScanner().clean([item], false);
+    expect(bootouts()).toEqual([]);
+  });
+
   it('never builds a launchctl command from a non-numeric SUDO_UID', async () => {
     vi.mocked(run).mockClear();
     vi.stubEnv('SUDO_UID', '1; touch /tmp/pwned');

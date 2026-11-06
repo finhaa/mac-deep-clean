@@ -140,3 +140,9 @@ describe('volumeReachable', () => {
     }
   });
 });
+
+describe('canJudgeProgram with a Volumes folder that is not at the root', () => {
+  it('judges a program under /opt/Volumes, which is no mount point', async () => {
+    expect(await canJudgeProgram('/opt/Volumes/Gone/bin/x', async () => false)).toBe(true);
+  });
+});

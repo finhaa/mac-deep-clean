@@ -89,6 +89,23 @@ afterAll(() => {
   fs.rmSync(HOME, { recursive: true, force: true });
 });
 
+// Scanners that offer items in this world and were decided to be reversible: a cache, a log or a download that
+// the app or the server makes again. A new scanner is in neither list until someone decides which one it is.
+const REVERSIBLE_IN_THIS_WORLD = [
+  'browser-cache',
+  'containers',
+  'dev-cache',
+  'diagnostic-reports',
+  'logs',
+  'mail-downloads',
+  'saved-app-state',
+  'spotify',
+  'system-cache',
+  'trash',
+  'user-cache',
+  'wallpaper',
+];
+
 async function scanAll() {
   fs.mkdirSync(HOME, { recursive: true });
   const results: Array<{ scanner: string; path: string; irreversible: boolean }> = [];
@@ -126,6 +143,11 @@ describe('every scanner together', () => {
       ...new Set((await scanAll()).filter((e) => e.irreversible).map((e) => e.scanner)),
     ].sort();
     expect(flagged).toEqual(IRREVERSIBLE_IN_THIS_WORLD);
+  });
+
+  it('has every scanner that offers something decided as irreversible or reversible', async () => {
+    const offered = [...new Set((await scanAll()).map((e) => e.scanner))].sort();
+    expect(offered).toEqual([...IRREVERSIBLE_IN_THIS_WORLD, ...REVERSIBLE_IN_THIS_WORLD].sort());
   });
 
   it('never offers the same path twice, nor a path inside another scanner target', async () => {

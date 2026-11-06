@@ -201,6 +201,9 @@ describe('vitest.setup.ts delete guard', () => {
       const padded = new Uint8Array(Buffer.from('xx/usr/bin/mdc-never-here'));
       const view = padded.subarray(2);
       expect(() => fs.rmSync(view)).toThrow(/test guard/);
+      const inside = path.join(os.tmpdir(), 'mdc-guard-inside-bytes');
+      const insideView = new Uint8Array(Buffer.from(`xx${inside}`)).subarray(2);
+      await expect(fsp.rm(insideView, { force: true })).resolves.toBeUndefined();
     });
 
     it('does not loop on a symlink cycle', async () => {

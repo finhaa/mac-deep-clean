@@ -192,6 +192,14 @@ describe('isInside', () => {
     expect(isInside('/opt', '/OPT/homebrew')).toBe(true);
   });
 
+  it('folds case the way the filesystem does, so a long s names the same folder as s', () => {
+    expect(isInside('/Applications', '/Application\u017f/Foo.app')).toBe(true);
+    expect(() => assertSafeToDelete(path.join(os.homedir(), 'Document\u017f'))).toThrow();
+    expect(isProtectedPath('/Sy\u017ftem/Library/x')).toBe(true);
+    expect(isProtectedPath(path.join(os.homedir(), 'Document\u017f/x'))).toBe(true);
+    expect(isProtectedPath(path.join(os.homedir(), 'Document\u017f-old/x'))).toBe(false);
+  });
+
   it('does not match a sibling that only shares a name prefix', () => {
     expect(isInside('/opt', '/optical')).toBe(false);
     expect(isInside('/opt', '/tmp/opt')).toBe(false);

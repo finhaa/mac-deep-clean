@@ -291,11 +291,25 @@ describe('HOMES under sudo', () => {
     }
   });
 
-  it.each(['root', '', '../etc', 'a b'])('adds nothing for SUDO_USER=%j', async (name) => {
+  it.each(['root', '', '.', '..', '../etc', 'a/b', 'a b'])(
+    'adds nothing for SUDO_USER=%j',
+    async (name) => {
+      try {
+        const without = await homesWith(undefined);
+        expect(await homesWith(name)).toEqual(without);
+      } finally {
+        vi.unstubAllEnvs();
+        vi.resetModules();
+      }
+    },
+  );
+
+  it('loads without the shell-spawning exec module, so a test that mocks it strictly still runs under sudo', async () => {
     try {
-      const without = await homesWith(undefined);
-      expect(await homesWith(name)).toEqual(without);
+      vi.doMock('./exec.js', () => ({}));
+      expect(await homesWith('mdcalice')).toContain('/Users/mdcalice');
     } finally {
+      vi.doUnmock('./exec.js');
       vi.unstubAllEnvs();
       vi.resetModules();
     }

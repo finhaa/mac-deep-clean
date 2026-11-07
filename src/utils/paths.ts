@@ -91,9 +91,16 @@ export function expandHome(p: string): string {
 }
 
 // The default volume folds case by Unicode rules, not by lowercasing: a long s names the same folder as s.
-// Upper then lower gets there, and folding a little more than the volume does only protects more.
+// Lower, upper, lower gets there, capital sharp s included (its lower case ß only upper-cases to SS), and
+// folding a little more than the volume does only protects more.
 function fold(p: string): string {
-  return path.resolve(expandHome(p)).normalize('NFC').toUpperCase().toLowerCase().normalize('NFC');
+  return path
+    .resolve(expandHome(p))
+    .normalize('NFC')
+    .toLowerCase()
+    .toUpperCase()
+    .toLowerCase()
+    .normalize('NFC');
 }
 
 /** True when `child` is `parent` or lies below it, ignoring case like the default macOS volume. */

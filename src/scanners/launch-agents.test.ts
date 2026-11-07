@@ -2,7 +2,12 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { canJudgeProgram, programResolves, volumeReachable } from './launch-agents.js';
+import {
+  canJudgeProgram,
+  mountPointOf,
+  programResolves,
+  volumeReachable,
+} from './launch-agents.js';
 
 describe('programResolves', () => {
   it('resolves a bare program name against launchd PATH', async () => {
@@ -121,6 +126,45 @@ describe('canJudgeProgram through symlinks', () => {
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe.skipIf(process.platform !== 'darwin')(
+  'canJudgeProgram through a symlink to a mount point',
+  () => {
+    it('reads the volume behind a symlink to /Volumes or to the data volume firmlink', async () => {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+      try {
+        await fs.symlink('/Volumes', path.join(dir, 'vlink'));
+        await fs.symlink('/System/Volumes/Data/Volumes', path.join(dir, 'dlink'));
+        const mounted = async (p: string) =>
+          /^(?:\/System\/Volumes\/Data)?\/Volumes\/mdc-work$/.test(p);
+        for (const link of ['vlink', 'dlink']) {
+          expect(await canJudgeProgram(path.join(dir, link, 'mdc-gone', 'bin', 'x'), mounted)).toBe(
+            false,
+          );
+          expect(await canJudgeProgram(path.join(dir, link, 'mdc-work', 'bin', 'x'), mounted)).toBe(
+            true,
+          );
+        }
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('reads the volume of a long s spelling of /Volumes, which the kernel resolves', async () => {
+      expect(await canJudgeProgram('/Volumeſ/mdc-gone/bin/x', async () => false)).toBe(false);
+    });
+  },
+);
+
+describe('mountPointOf', () => {
+  it('folds case by Unicode rules, so a long s spells /Volumes too', () => {
+    expect(mountPointOf('/Volumeſ/Gone/bin/x')).toBe('/Volumeſ/Gone');
+    expect(mountPointOf('/System/Volumes/Data/Volumeſ/Gone/x')).toBe(
+      '/System/Volumes/Data/Volumeſ/Gone',
+    );
+    expect(mountPointOf('/opt/Volumes/Gone/x')).toBeUndefined();
   });
 });
 

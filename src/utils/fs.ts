@@ -64,16 +64,19 @@ export async function listDir(p: string): Promise<string[]> {
 }
 
 /**
- * Checks `target` and returns the path to delete. The parent is resolved first, so a symlinked
- * parent component cannot lead a lexically safe path into a protected one; the leaf is left alone
- * because removing a symlink removes only the link.
+ * Checks `target` and returns the path to delete, as the kernel spells it. The parent is resolved first,
+ * so a symlinked parent component cannot lead a lexically safe path into a protected one. A leaf that is
+ * not a symlink is resolved too, so the guard compares the folder the volume really names, not a case or
+ * Unicode spelling of it; a symlink leaf is left alone because removing a symlink removes only the link.
  */
 export async function resolveDeletionTarget(target: string): Promise<string> {
   assertSafeToDelete(target);
   const resolved = path.resolve(target);
   const parent = await fs.realpath(path.dirname(resolved)).catch(() => null);
   if (!parent) return resolved;
-  const real = path.join(parent, path.basename(resolved));
+  const leaf = path.join(parent, path.basename(resolved));
+  const stat = await fs.lstat(leaf).catch(() => null);
+  const real = stat && !stat.isSymbolicLink() ? await fs.realpath(leaf) : leaf;
   assertSafeToDelete(real);
   return real;
 }

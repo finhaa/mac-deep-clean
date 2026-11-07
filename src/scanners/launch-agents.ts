@@ -101,10 +101,12 @@ export async function volumeReachable(volume: string): Promise<boolean> {
   );
 }
 
-// The nearest ancestor that exists, resolved: a symlink an unmounted disk left behind is found by lstat but
-// does not resolve, and a folder we may not enter does not resolve either. Neither says the program is gone.
-async function resolveNearestAncestor(p: string): Promise<string | null> {
+// The path as the kernel resolves it: the nearest ancestor that exists, resolved, plus the missing rest.
+// A symlink an unmounted disk left behind is found by lstat but does not resolve, and a folder we may not
+// enter does not resolve either: null, since neither says the program is gone.
+async function resolveProgramPath(p: string): Promise<string | null> {
   let current = p;
+  const rest: string[] = [];
   for (;;) {
     try {
       await fs.lstat(current);
@@ -112,15 +114,22 @@ async function resolveNearestAncestor(p: string): Promise<string | null> {
       const code = (err as NodeJS.ErrnoException).code;
       const parent = path.dirname(current);
       if ((code !== 'ENOENT' && code !== 'ENOTDIR') || parent === current) return null;
+      rest.unshift(path.basename(current));
       current = parent;
       continue;
     }
-    return fs.realpath(current).catch(() => null);
+    const real = await fs.realpath(current).catch(() => null);
+    return real && path.join(real, ...rest);
   }
 }
 
-// Every spelling of a mount point: any case (the default volume ignores it), and the data volume's firmlink.
-const VOLUME = /^(?:\/System\/Volumes\/Data)?\/Volumes\/[^/]+/i;
+// Every spelling of a mount point: any case by Unicode rules (the default volume ignores it, and reads a long
+// s as s), and the data volume's firmlink.
+const VOLUME = /^(?:\/System\/Volumes\/Data)?\/Volumes\/[^/]+/iu;
+
+export function mountPointOf(p: string): string | undefined {
+  return VOLUME.exec(p)?.[0];
+}
 
 // launchd resolves a relative path against its own working directory, and a program on an unmounted volume
 // is not missing, only out of reach, whether the path names the volume or reaches it through a symlink:
@@ -131,8 +140,9 @@ export async function canJudgeProgram(
 ): Promise<boolean> {
   if (!program.includes('/')) return true;
   if (!path.isAbsolute(program)) return false;
-  if ((await resolveNearestAncestor(program)) === null) return false;
-  const volume = VOLUME.exec(path.normalize(program))?.[0];
+  const resolved = await resolveProgramPath(program);
+  if (resolved === null) return false;
+  const volume = mountPointOf(resolved);
   return !volume || reachable(volume);
 }
 

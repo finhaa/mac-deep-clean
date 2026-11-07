@@ -217,6 +217,13 @@ describe('isInside', () => {
     expect(isProtectedPath(path.join(os.homedir(), 'Document\u017f-old/x'))).toBe(false);
   });
 
+  it('folds a capital sharp s to ss, as the default volume does', () => {
+    expect(isInside('/tmp/.ssh', '/tmp/.\u1e9eh/x')).toBe(true);
+    expect(isProtectedPath(path.join(os.homedir(), '.\u1e9eh'))).toBe(true);
+    expect(isProtectedPath(path.join(os.homedir(), 'Library/Me\u1e9eages/x'))).toBe(true);
+    expect(() => assertSafeToDelete(path.join(os.homedir(), '.\u1e9eh'))).toThrow(/protected/);
+  });
+
   it('does not match a sibling that only shares a name prefix', () => {
     expect(isInside('/opt', '/optical')).toBe(false);
     expect(isInside('/opt', '/tmp/opt')).toBe(false);
@@ -235,6 +242,11 @@ describe('the home folder of another user', () => {
 
   it('leaves a project folder inside it to the scanners', () => {
     expect(isProtectedPath('/Users/other/code/app/node_modules')).toBe(false);
+  });
+
+  it('protects its private folders under a long s or capital sharp s spelling', () => {
+    expect(isProtectedPath('/Uſers/other/Documentſ/x')).toBe(true);
+    expect(isProtectedPath('/Users/other/.ẞh/id_rsa')).toBe(true);
   });
 });
 
@@ -320,6 +332,14 @@ describe('a path spelled with decomposed Unicode', () => {
   it('compares equal to its precomposed spelling', () => {
     expect(isInside('/tmp/café', '/tmp/café/x')).toBe(true);
     expect(isInside('/tmp/café', '/tmp/café/x')).toBe(true);
+  });
+
+  it('composes before folding case, so a mark on a letter with a lower case form of its own still matches', () => {
+    expect(isInside('/tmp/ᾄ', '/tmp/ᾄ/x')).toBe(true);
+  });
+
+  it('composes after folding case, so a mark on a long s matches the accented s', () => {
+    expect(isInside('/tmp/ś', '/tmp/ſ́/x')).toBe(true);
   });
 
   it('keeps a HOME with an accent protected under either spelling', async () => {

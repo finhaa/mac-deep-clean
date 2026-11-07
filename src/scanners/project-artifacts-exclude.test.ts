@@ -2,16 +2,15 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { bigBuffer } from '../testing/files.js';
 import { ProjectArtifactsScanner, findOwnNodeModules, isExcluded } from './project-artifacts.js';
 
 let root: string;
 
-const big = () => Buffer.alloc(11 * 1024 * 1024, 1);
-
 async function makeProject(name: string): Promise<string> {
   const dir = path.join(root, name);
   await fs.mkdir(path.join(dir, 'node_modules'), { recursive: true });
-  await fs.writeFile(path.join(dir, 'node_modules/blob.bin'), big());
+  await fs.writeFile(path.join(dir, 'node_modules/blob.bin'), bigBuffer());
   return path.join(dir, 'node_modules');
 }
 

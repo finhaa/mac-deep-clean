@@ -2,11 +2,10 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MB, bigBuffer } from '../testing/files.js';
 import { ProjectArtifactsScanner } from './project-artifacts.js';
 
 let root: string;
-
-const big = () => Buffer.alloc(11 * 1024 * 1024, 1);
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-scan-'));
@@ -18,7 +17,7 @@ afterEach(async () => {
 
 async function artifact(dir: string): Promise<string> {
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, 'blob.bin'), big());
+  await fs.writeFile(path.join(dir, 'blob.bin'), bigBuffer());
   return dir;
 }
 
@@ -135,10 +134,7 @@ describe('ProjectArtifactsScanner.scan filters', () => {
 
   it('skips an artifact of 9 MB, just under the floor', async () => {
     await fs.mkdir(path.join(root, 'nine/node_modules'), { recursive: true });
-    await fs.writeFile(
-      path.join(root, 'nine/node_modules/blob.bin'),
-      Buffer.alloc(9 * 1024 * 1024, 1),
-    );
+    await fs.writeFile(path.join(root, 'nine/node_modules/blob.bin'), Buffer.alloc(9 * MB, 1));
     expect(await scanner(root).scan()).toEqual([]);
   });
 

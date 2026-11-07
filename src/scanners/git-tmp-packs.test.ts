@@ -2,11 +2,11 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MB, bigBuffer } from '../testing/files.js';
 import { GitTmpPacksScanner } from './git-tmp-packs.js';
 import { getAllScanners } from './index.js';
 
 const MINUTE_MS = 60_000;
-const big = () => Buffer.alloc(11 * 1024 * 1024, 1);
 
 let root: string;
 
@@ -18,7 +18,7 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true });
 });
 
-async function writeAged(file: string, ageMinutes: number, data = big()): Promise<string> {
+async function writeAged(file: string, ageMinutes: number, data = bigBuffer()): Promise<string> {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, data);
   const when = new Date(Date.now() - ageMinutes * MINUTE_MS);
@@ -43,7 +43,7 @@ describe('GitTmpPacksScanner.scan', () => {
     const results = await scanner().scan();
 
     expect(results.map((r) => r.path)).toEqual([stale]);
-    expect(results[0]?.size).toBeGreaterThanOrEqual(11 * 1024 * 1024);
+    expect(results[0]?.size).toBeGreaterThanOrEqual(11 * MB);
     expect(results[0]?.risk).toBe('moderate');
     expect(results[0]?.category).toBe('git-tmp-packs');
   });
@@ -99,7 +99,6 @@ describe('GitTmpPacksScanner.scan', () => {
   });
 
   it('draws the size line at exactly 10 MB', async () => {
-    const MB = 1024 * 1024;
     await writeAged(packFile('repo', 'tmp_pack_edge'), 600, Buffer.alloc(10 * MB, 1));
     await writeAged(packFile('repo', 'tmp_pack_short'), 600, Buffer.alloc(10 * MB - 1, 1));
 
@@ -156,8 +155,8 @@ describe('GitTmpPacksScanner.scan', () => {
   });
 
   it('finds the leak in several repos and orders the largest first', async () => {
-    await writeAged(packFile('a', 'tmp_pack_one'), 60, Buffer.alloc(11 * 1024 * 1024, 1));
-    await writeAged(packFile('b', 'tmp_pack_two'), 60, Buffer.alloc(13 * 1024 * 1024, 1));
+    await writeAged(packFile('a', 'tmp_pack_one'), 60, Buffer.alloc(11 * MB, 1));
+    await writeAged(packFile('b', 'tmp_pack_two'), 60, Buffer.alloc(13 * MB, 1));
 
     const results = await scanner().scan();
 
@@ -345,7 +344,7 @@ describe('GitTmpPacksScanner.clean safety guard', () => {
     const { freed, errors } = await new GitTmpPacksScanner().clean([
       {
         path: protectedPack,
-        size: big().length,
+        size: bigBuffer().length,
         label: 'x',
         category: 'git-tmp-packs',
         risk: 'moderate',

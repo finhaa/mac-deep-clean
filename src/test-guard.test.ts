@@ -195,18 +195,19 @@ describe('vitest.setup.ts delete guard', () => {
     });
 
     it('refuses a Uint8Array path, which the kernel takes like a Buffer', async () => {
+      // The typings call only a Buffer a path; the runtime takes any byte array.
+      const asPath = (bytes: Uint8Array) => bytes as unknown as Buffer;
       const bytes = new Uint8Array(Buffer.from('/usr/bin/mdc-never-here'));
-      await expect(fsp.rm(bytes, { force: true })).rejects.toThrow(/test guard/);
-      expect(() => fs.unlinkSync(bytes)).toThrow(/test guard/);
+      await expect(fsp.rm(asPath(bytes), { force: true })).rejects.toThrow(/test guard/);
+      expect(() => fs.unlinkSync(asPath(bytes))).toThrow(/test guard/);
       const padded = new Uint8Array(Buffer.from('xx/usr/bin/mdc-never-here'));
-      const view = padded.subarray(2);
-      expect(() => fs.rmSync(view)).toThrow(/test guard/);
+      expect(() => fs.rmSync(asPath(padded.subarray(2)))).toThrow(/test guard/);
       const inside = path.join(os.tmpdir(), 'mdc-guard-inside-bytes');
       const insideView = new Uint8Array(Buffer.from(`xx${inside}`)).subarray(2);
-      await expect(fsp.rm(insideView, { force: true })).resolves.toBeUndefined();
+      await expect(fsp.rm(asPath(insideView), { force: true })).resolves.toBeUndefined();
       const trailing = `${inside}/../../../../../../usr/mdc-never-here`;
       const cut = new Uint8Array(Buffer.from(trailing)).subarray(0, inside.length);
-      await expect(fsp.rm(cut, { force: true })).resolves.toBeUndefined();
+      await expect(fsp.rm(asPath(cut), { force: true })).resolves.toBeUndefined();
     });
 
     it('does not loop on a symlink cycle', async () => {

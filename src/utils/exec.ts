@@ -14,7 +14,7 @@ export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-const USER_NAME = /^[A-Za-z0-9._-]+$/;
+export const USER_NAME = /^[A-Za-z0-9._-]+$/;
 
 export async function run(
   command: string,

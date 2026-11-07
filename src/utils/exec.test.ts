@@ -54,7 +54,18 @@ describe('asInvokingUser', () => {
     expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
     asRoot('rafa$(id)');
     expect(() => asInvokingUser('brew cleanup')).toThrow(/SUDO_USER/);
-    for (const hostile of ['rafa;id', 'rafa&id', 'rafa|id', 'rafa`id`', 'rafa\nid', 'ra fa']) {
+    for (const hostile of [
+      'rafa;id',
+      'rafa&id',
+      'rafa|id',
+      'rafa`id`',
+      'rafa\nid',
+      'ra fa',
+      '.',
+      '..',
+      'a/b',
+      '../etc',
+    ]) {
       asRoot(hostile);
       expect(() => asInvokingUser('brew cleanup'), JSON.stringify(hostile)).toThrow(/SUDO_USER/);
     }

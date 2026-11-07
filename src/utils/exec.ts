@@ -1,5 +1,6 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { USER_NAME } from './user-name.js';
 
 const execAsync = promisify(exec);
 
@@ -13,8 +14,6 @@ export interface ExecResult {
 export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
-
-export const USER_NAME = /^[A-Za-z0-9._-]+$/;
 
 export async function run(
   command: string,

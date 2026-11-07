@@ -45,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A `SUDO_USER` of `.` or `..` is no longer taken as a user name: it no longer adds `/Users` or
+  `/` to the protected homes, and the Homebrew and Xcode commands refuse it instead of running
+  `sudo -u ..`. The user name check moved out of the module that runs shell commands, so tests
+  that mock that module no longer fail to load when `SUDO_USER` is set.
 - Control, format and invisible characters in file names (bidi overrides, zero-width characters,
   the soft hyphen, tag characters, variation selectors, line and paragraph separators and the
   byte order mark) now show as `?`, so a name cannot read as another one. `purge --path` also

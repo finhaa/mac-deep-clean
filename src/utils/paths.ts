@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { USER_NAME } from './exec.js';
+import { USER_NAME } from './user-name.js';
 
 export const HOME = os.homedir();
 

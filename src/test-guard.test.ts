@@ -243,3 +243,55 @@ describe('vitest.setup.ts delete guard', () => {
     });
   });
 });
+
+// The guard replaces each call it covers with an anonymous wrapper; every original has its own name.
+describe('what the changelog and the setup comment say the guard covers', () => {
+  const read = (name: string) =>
+    fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const isGuarded = (fn: unknown) => typeof fn === 'function' && fn.name === '';
+  const named = (text: string) => [...text.matchAll(/`(\w+)`/g)].map((m) => m[1]);
+  const guarded = () =>
+    Object.entries(fsp)
+      .filter(([, fn]) => isGuarded(fn))
+      .map(([name]) => name)
+      .sort();
+  const fsCalls = fs as unknown as Record<string, unknown>;
+
+  const UNGUARDED = [
+    'open',
+    'createWriteStream',
+    'chmod',
+    'chown',
+    'utimes',
+    'link',
+    'symlink',
+    'mkdir',
+    'mkdtemp',
+    'ftruncate',
+    'write',
+    'writev',
+  ];
+
+  it('lists in the changelog exactly the calls the guard wraps', () => {
+    const list =
+      /Test runs refuse the Node file calls[^:]*:(.*?), in promise, callback and sync form/.exec(
+        read('CHANGELOG.md'),
+      )?.[1];
+    expect(list).toBeDefined();
+    expect(named(list ?? '').sort()).toEqual(guarded());
+  });
+
+  it('wraps the callback and sync forms of every guarded call too', () => {
+    const missing = guarded().filter(
+      (name) => !isGuarded(fsCalls[name]) || !isGuarded(fsCalls[`${name}Sync`]),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it.each(UNGUARDED)('says %s is not guarded, and it is not', (name) => {
+    const notGuarded = /Not guarded: (.*?)\./.exec(read('CHANGELOG.md'))?.[1] ?? '';
+    expect(isGuarded(fsCalls[name])).toBe(false);
+    expect(named(notGuarded)).toContain(name);
+    expect(/Not guarded: (.*?)\./.exec(read('vitest.setup.ts'))?.[1]).toContain(name);
+  });
+});

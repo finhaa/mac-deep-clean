@@ -21,7 +21,7 @@ program
   .command('scan')
   .description('Scan your Mac and report reclaimable space')
   .option('-c, --category <name>', 'Only scan a specific category')
-  .option('--deep', 'Include full Electron app state (conversations, workspaces) — risky')
+  .option('--deep', 'Include Electron app state folders (conversations, workspaces) — risky')
   .action(async (opts) => {
     await scanCommand(opts);
   });
@@ -30,15 +30,18 @@ program
   .command('clean')
   .description('Interactively clean caches and reclaim space')
   .option('--dry-run', 'Preview only — no files deleted')
-  .option('--risky', 'Include risky categories (docker, etc.)')
+  .option(
+    '--risky',
+    'Include risky categories and items (docker, APFS snapshots; Electron state also needs --deep)',
+  )
   .option(
     '-y, --yes',
-    'Skip prompts; selects only safe items unless --risky or --category is set (irreversible items need their own --category)',
+    'Skip prompts; selects only safe items unless --risky or --category is set (irreversible items need their own --category; .venv/venv are never auto-picked)',
   )
   .option('-c, --category <name>', 'Only clean a specific category')
   .option(
     '--deep',
-    'Include full Electron app state — needs --risky or --category electron, and with --yes only --category electron picks it',
+    'Include Electron app state folders — needs --risky or --category electron, and with --yes only --category electron picks it',
   )
   .action(async (opts) => {
     await cleanCommand(opts);

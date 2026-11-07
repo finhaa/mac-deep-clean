@@ -33,11 +33,11 @@ Or skip `npm link` and run the built binary directly with `node dist/index.js <c
 
 ```bash
 mac-deep-clean scan               # Scan and show reclaimable space
-mac-deep-clean scan --deep        # Also report Electron app full state (risky)
+mac-deep-clean scan --deep        # Also report Electron app state folders (risky)
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
-mac-deep-clean clean --risky      # Include risky categories (docker, Electron state)
-mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky, except the irreversible ones listed under snapshots below, which need their own --category); .venv/venv always left to the picker
+mac-deep-clean clean --risky      # Include risky categories and items (docker, APFS snapshots; Electron state also needs --deep)
+mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky; see What `clean` picks below); .venv/venv always left to the picker
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
@@ -50,6 +50,32 @@ mac-deep-clean purge --exclude ~/code/client-a
 mac-deep-clean duplicates ~/Downloads --min-size 5MB
                                   # Read-only duplicate file report
 ```
+
+## What `clean` picks
+
+- `clean` scans every category except the risky ones (`docker`) and hides risky items, such as APFS
+  snapshots and Electron app state. In the list only the safe items start ticked.
+- `--risky` adds the risky categories and items.
+- `--category <name>` scans only that category and shows every item of it, risky ones too.
+- `--deep` adds Electron app state folders, which are risky: `clean` lists them only with `--risky` or
+  `--category electron`, and `--yes` picks them only with `--category electron`.
+- With `--yes` only safe items are picked, and `--yes --risky` adds the moderate and risky ones except the
+  irreversible items. `.venv` and `venv` folders are never picked by `--yes`, not even with
+  `--category project-artifacts`.
+
+Irreversible items cannot be undone. They run only when you name their category, as in
+`clean --category time-machine --yes`, which then picks every item of it:
+
+- `time-machine`: local Time Machine snapshots
+- `apfs-snapshots`: APFS snapshots
+- `ios-backups`: iOS device backups
+- `screen-recording`: screen recording app data
+- `music-creation`: GarageBand and Logic sound libraries
+- `docker`: the `docker system prune`
+- `ios-simulators`: Xcode Archives (DerivedData and unavailable simulators are not irreversible)
+- `android`: Android virtual devices (the SDK and its caches are not)
+- `electron`: Electron app state folders, listed only with `--deep`
+- `jetbrains`: JetBrains caches, where LocalHistory lives (the logs are not)
 
 ## Running with sudo
 
@@ -83,13 +109,8 @@ first, and never combine `sudo` with `--yes --risky`. Only Homebrew and Xcode
 tooling are handed back to the invoking user (`SUDO_USER`).
 
 Each snapshot is listed on its own, by date (Time Machine) or by name (APFS),
-and only the ones you pick are deleted. With `--yes` only safe items are picked,
-and `--yes --risky` adds the moderate and risky ones except the irreversible
-items (their deletes cannot be undone): Time Machine and APFS snapshots, iOS
-backups, screen recording data, music libraries, the Docker system prune, Xcode
-Archives, Android virtual devices, Electron app state (`--deep`) and JetBrains
-caches (LocalHistory lives there). They run only when you name their category, as in
-`clean --category time-machine --yes`, which then picks every item of it.
+and only the ones you pick are deleted.
+Snapshots are irreversible, so `--yes` picks them only by their own `--category` ([What `clean` picks](#what-clean-picks)).
 Snapshots have no measurable size, so the list shows 0 B. APFS snapshots are `risky`: they appear only with
 `--category apfs-snapshots` or `--risky`, and the OS update and Time Machine
 snapshots are never offered there.
@@ -132,7 +153,9 @@ and extension state**.
 
 Pass `--deep` to additionally report the big state folders of each app, one
 entry per folder (for example `IndexedDB`, `vm_bundles`, `User/workspaceStorage`),
-marked `risky`. On a real Mac that's typically 10+ GB of Claude conversations,
+marked `risky`. Because they are risky, `clean` lists them only with `--risky` or
+`--category electron`, and `--yes` picks them only with `--category electron`.
+On a real Mac that's typically 10+ GB of Claude conversations,
 Cursor workspace storage, VS Code extensions, etc. The app folder itself and
 settings files (`settings.json`, `keybindings.json`, snippets, MCP config) are
 never listed. Review carefully; export anything you care about before cleaning.
@@ -194,12 +217,12 @@ Plus two extra commands:
 ## Safety
 
 - Protected paths (`/System`, `~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, …) are never touched, nor is any directory that _contains_ one of them.
-- Risky items are excluded from cleanup unless you pass `--risky` or name their `--category`, and the irreversible ones (Docker prune, Electron app state via `--deep`, snapshots, backups) are picked in `--yes` mode only by their own `--category`.
+- Risky items are excluded from cleanup unless you pass `--risky` or name their `--category`, and `--yes` picks an irreversible item only when you name its `--category` ([the full list](#what-clean-picks)).
 - `--dry-run` is 100% side-effect-free.
 - Docker uses `docker system prune`, not manual `rm`.
 - iOS simulators use `xcrun simctl delete`, not manual `rm`.
 - Size calculations timeout after 30s to avoid hangs on SIP-protected dirs.
-- Time Machine and APFS snapshot deletion requires `sudo` and is clearly warned.
+- Time Machine and APFS snapshot deletion runs `sudo tmutil` or `sudo diskutil` for that one command, which asks for your password.
 
 ## Credits
 

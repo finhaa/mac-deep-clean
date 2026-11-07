@@ -28,9 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scan`, `clean`, and `doctor` commands with interactive checkbox selection
   via `@inquirer/prompts`.
 - Flags: `--dry-run`, `--risky`, `--yes`, `--category <name>`, `--deep`.
-- `--deep` mode for the Electron scanner reports per-app full state
-  (conversations, workspace storage, extensions) as risky, separate from the
-  safe cache subdirs.
+- `--deep` mode for the Electron scanner reports each app's state folders of
+  100 MB or more (conversations, workspace storage, extensions) as risky,
+  separate from the safe cache subdirs.
 - Categorized permission warnings distinguishing paths that need
   Full Disk Access (`~/Library`) from paths that need sudo (`/Library`,
   `/private`) and reporting which specific paths failed.
@@ -51,7 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that mock that module no longer fail to load when `SUDO_USER` is set.
 - Control, format and invisible characters in file names (bidi overrides, zero-width characters,
   the soft hyphen, tag characters, variation selectors, line and paragraph separators and the
-  byte order mark) now show as `?`, so a name cannot read as another one. `purge --path` also
+  byte order mark) now show as `?`. Spaces (U+00A0, U+3000), the braille blank U+2800, look-alike
+  letters such as the Cyrillic U+0430 and private-use characters such as U+E000 are kept, so two
+  names can still look alike. `purge --path` also
   strips control characters from the reason it refuses a folder and from a path that is not a
   directory.
 - `clean --deep` no longer deletes risky Electron app state (conversations,
@@ -110,13 +112,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `clean` no longer tells you to add flags you already passed when it skips an item.
 - The project scan keeps a result only when it lies inside its search root, using the
   same case-insensitive containment check as the protected list.
+- Orphaned LaunchAgents read the volume from the program path as the kernel resolves it, so
+  `/Volumes/Work/../Gone`, `//Volumes/Gone`, `/volumes/Gone` and
+  `/System/Volumes/Data/Volumes/Gone` count as an unmounted volume, not as a missing program.
+- `clean --deep` and `scan --deep` now say whether the Electron state folders are hidden, shown
+  unticked, skipped or picked for the flags given.
+- The protected-path check folds case by Unicode rules, as the default macOS volume does, so a
+  long s (`ſ`) names the same folder as `s` and `~/Documentſ` is protected like `~/Documents`.
+- The `git-tmp-packs` labels use the same `~` shortening as every other label, so a file outside
+  the home shows its full path instead of `~/../..`, and with `HOME=/` a path prints as `~/etc/x`,
+  not `~etc/x`.
+- Under sudo, the home folder of the user who ran sudo (`/Users/$SUDO_USER`) is protected like
+  `HOME`: the folder itself, its `Library` containers and the protected folders inside it.
 - Test runs refuse the Node file calls that delete, move, overwrite or truncate
   outside the temp dir: `rm`, `rmdir`, `unlink`, `rename`, `truncate`, `cp`,
   `copyFile`, `writeFile` and `appendFile`, in promise, callback and sync form,
-  through named imports, `file:` URLs, Buffers, a symlinked parent, a trailing slash
-  and a symlink the call follows. The temp dir itself is refused when it is `/` or
-  holds the home folder. Child processes (`rm`, `find -delete`) and calls that open
-  a file for writing by descriptor are not covered.
+  through named imports, `file:` URLs, Buffers and any other byte array, a symlinked
+  parent, a trailing slash and a symlink the call follows. The temp dir itself is refused
+  when it is `/` or holds the home folder. Not guarded: `open` with a write flag,
+  `createWriteStream`, `chmod`, `chown` and `utimes` (also their `l` forms), `link`,
+  `symlink`, `mkdir`, `mkdtemp`, every call on a file descriptor or FileHandle
+  (`ftruncate`, `write`, `writev`) and child processes (`rm`, `find -delete`).
 - The test that no two scanners offer the same path now runs in a temp home folder,
   fails when a scanner that should find something offers nothing, and pins which
   scanners may flag an item irreversible. `clean --help` says `--deep` with `--yes`

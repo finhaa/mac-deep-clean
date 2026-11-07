@@ -431,3 +431,62 @@ describe('cleanCommand terminal safety', () => {
     expect(logged()).not.toContain('\r');
   });
 });
+
+describe('cleanCommand --deep banner', () => {
+  const STATE = 'Claude — IndexedDB (state)';
+  const electron = () =>
+    fakeScanner('electron', 'safe', [
+      item('electron', 'safe', 'Claude — Cache'),
+      { ...item('electron', 'risky', STATE), irreversible: true },
+    ]);
+
+  // What each banner promises, checked against what the run really did with the state item.
+  const PROMISES: Record<
+    string,
+    (seen: { scanned: boolean; offered?: boolean; ticked?: boolean; cleaned: boolean }) => boolean
+  > = {
+    'leaves Electron out': (s) => !s.scanned,
+    'stay hidden': (s) => s.scanned && s.offered !== true && !s.cleaned,
+    'skips Electron app state': (s) => s.scanned && !s.cleaned,
+    'picks every Electron app state folder': (s) => s.cleaned,
+    'will appear': (s) => s.offered === true && s.ticked === false,
+  };
+
+  it.each([
+    { deep: true },
+    { deep: true, risky: true },
+    { deep: true, category: 'electron' },
+    { deep: true, category: 'safe-cat' },
+    { deep: true, yes: true },
+    { deep: true, yes: true, risky: true },
+    { deep: true, yes: true, category: 'electron' },
+    { deep: true, yes: true, risky: true, category: 'electron' },
+  ])('says what %j does with the state folders', async (options) => {
+    const e = electron();
+    vi.mocked(getAllScanners).mockReturnValue([safe, e] as never);
+    vi.mocked(checkbox).mockReset();
+    vi.mocked(checkbox).mockResolvedValue([] as never);
+
+    await cleanCommand(options);
+
+    const choices = vi
+      .mocked(checkbox)
+      .mock.calls.flatMap(
+        (c) => (c[0] as unknown as { choices: { name: string; checked: boolean }[] }).choices,
+      )
+      .filter((c) => c.name.includes(STATE));
+    const seen = {
+      scanned: e.scan.mock.calls.length > 0,
+      offered: options.yes ? undefined : choices.length > 0,
+      ticked: choices[0]?.checked,
+      cleaned: cleanedLabels(e).includes(STATE),
+    };
+    const banner = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => c.join(' '))
+      .find((line) => line.includes('DEEP mode'));
+    const promised = Object.keys(PROMISES).filter((phrase) => banner?.includes(phrase));
+    expect(promised, banner).toHaveLength(1);
+    expect(PROMISES[promised[0] ?? '']?.(seen), `${banner} ${JSON.stringify(seen)}`).toBe(true);
+  });
+});

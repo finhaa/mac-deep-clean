@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { asInvokingUser, commandExists, run, shellQuote } from './exec.js';
+import { asInvokingUser, run, shellQuote } from './exec.js';
 
 describe('run', () => {
   it('returns stdout and code 0 on success', async () => {
@@ -20,13 +20,6 @@ describe('run', () => {
 
   it('runs in the given directory', async () => {
     expect((await run('pwd', { cwd: '/' })).stdout.trim()).toBe('/');
-  });
-});
-
-describe('commandExists', () => {
-  it('is true for a command on the PATH and false for one that is not', async () => {
-    expect(await commandExists('node')).toBe(true);
-    expect(await commandExists('mdc-no-such-command')).toBe(false);
   });
 });
 

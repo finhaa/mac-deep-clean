@@ -50,5 +50,6 @@ export function truncate(str: string, max: number): string {
 export function tildify(p: string): string {
   if (!isInside(HOME, p)) return p;
   const home = path.resolve(HOME).normalize('NFC');
-  return `~${path.resolve(p).normalize('NFC').slice(home.length)}`;
+  const rest = path.resolve(p).normalize('NFC').slice(home.length);
+  return rest === '' || rest.startsWith('/') ? `~${rest}` : `~/${rest}`;
 }

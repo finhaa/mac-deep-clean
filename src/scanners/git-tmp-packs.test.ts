@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitTmpPacksScanner } from './git-tmp-packs.js';
 import { getAllScanners } from './index.js';
 
@@ -46,6 +46,30 @@ describe('GitTmpPacksScanner.scan', () => {
     expect(results[0]?.size).toBeGreaterThanOrEqual(11 * 1024 * 1024);
     expect(results[0]?.risk).toBe('moderate');
     expect(results[0]?.category).toBe('git-tmp-packs');
+  });
+
+  it('labels a file outside HOME by its full path, not as a ~/.. climb', async () => {
+    const stale = await writeAged(packFile('repo', 'tmp_pack_label'), 30);
+
+    const results = await scanner().scan();
+
+    expect(results[0]?.label).toBe(stale);
+  });
+
+  it('labels a file inside HOME as ~/...', async () => {
+    vi.resetModules();
+    vi.stubEnv('HOME', root);
+    try {
+      const { GitTmpPacksScanner: Fresh } = await import('./git-tmp-packs.js');
+      await writeAged(packFile('repo', 'tmp_pack_home'), 30);
+      const s = new Fresh();
+      s.searchRoots = [root];
+
+      expect((await s.scan())[0]?.label).toBe('~/repo/.git/objects/pack/tmp_pack_home');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it('skips a tmp_pack file touched within the last 10 minutes (a fetch may still be writing it)', async () => {

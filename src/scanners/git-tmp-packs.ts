@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
 import { findDirsNamed } from '../utils/find.js';
+import { tildify } from '../utils/format.js';
 import { resolveDeletionTarget } from '../utils/fs.js';
-import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 import { resolveSearchRoots } from './project-artifacts.js';
 
@@ -60,7 +60,7 @@ export class GitTmpPacksScanner extends BaseScanner {
       found.push({
         path: file,
         size: st.size,
-        label: `~/${path.relative(HOME, file)}`,
+        label: tildify(file),
         category: this.category,
         risk: this.risk,
         description: 'Half-written git download; git starts over on the next fetch',

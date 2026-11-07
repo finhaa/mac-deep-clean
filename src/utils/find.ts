@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { isInside } from './paths.js';
+import { isStrictlyInside } from './paths.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -54,8 +54,7 @@ export async function findDirsNamed(
     '-print0',
   ]);
   const found = parseRecords(stdout).filter(
-    (record) =>
-      names.includes(path.basename(record)) && isInside(root, record) && !isInside(record, root),
+    (record) => names.includes(path.basename(record)) && isStrictlyInside(root, record),
   );
   return [...new Set(found)];
 }

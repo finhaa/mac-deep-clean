@@ -271,6 +271,16 @@ describe('GitTmpPacksScanner.clean refuses what is not a git pack folder', () =>
     await expect(fs.stat(hook)).resolves.toBeDefined();
   });
 
+  it('keeps a tmp_pack file in a folder that only ends in objects/pack', async () => {
+    const lookalike = await writeAged(path.join(root, 'repo/.git/fakeobjects/pack/tmp_pack_x'), 60);
+
+    const { freed, errors } = await scanner().clean([item(lookalike)], false);
+
+    expect(freed).toBe(0);
+    expect(errors).toHaveLength(1);
+    await expect(fs.stat(lookalike)).resolves.toBeDefined();
+  });
+
   it('keeps a file in objects/pack whose name only starts with tmp_', async () => {
     const other = await writeAged(packFile('repo', 'tmp_other'), 60);
 

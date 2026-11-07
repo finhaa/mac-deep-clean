@@ -127,6 +127,21 @@ describe('ProjectArtifactsScanner.scan filters', () => {
     expect(paths).toEqual([pods, rust].sort());
   });
 
+  it('walks five levels below the search root and no deeper', async () => {
+    const shallow = await artifact(path.join(root, 'a/b/c/d/node_modules'));
+    await artifact(path.join(root, 'a/b/c/d/e/node_modules'));
+    expect((await scanner(root).scan()).map((r) => r.path)).toEqual([shallow]);
+  });
+
+  it('skips an artifact of 9 MB, just under the floor', async () => {
+    await fs.mkdir(path.join(root, 'nine/node_modules'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, 'nine/node_modules/blob.bin'),
+      Buffer.alloc(9 * 1024 * 1024, 1),
+    );
+    expect(await scanner(root).scan()).toEqual([]);
+  });
+
   it('skips artifacts smaller than 10 MB', async () => {
     await fs.mkdir(path.join(root, 'small/node_modules'), { recursive: true });
     await fs.writeFile(path.join(root, 'small/node_modules/f'), 'tiny');

@@ -13,7 +13,9 @@ export async function scanCommand(
   if (options.deep) {
     console.log(
       chalk.yellow(
-        'DEEP mode: Electron apps will also report full state (risky — reviewer recommended).\n',
+        options.category && options.category !== 'electron'
+          ? 'DEEP mode: --deep only adds Electron app state, and this --category leaves Electron out.\n'
+          : 'DEEP mode: Electron apps also report their state folders (risky). `clean` lists them only with --risky or --category electron.\n',
       ),
     );
   }

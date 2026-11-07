@@ -162,3 +162,27 @@ describe('scanCommand terminal safety', () => {
     expect(logged()).not.toContain('\r');
   });
 });
+
+describe('scanCommand --deep banner', () => {
+  it('lists the state folders it promises and says clean needs --risky or --category electron', async () => {
+    const state: ScanResult = { ...item('electron', 'Claude — IndexedDB (state)'), risk: 'risky' };
+    const electron = scanner('electron', 'safe', [state]);
+    vi.mocked(getAllScanners).mockReturnValue([electron] as never);
+
+    await scanCommand({ deep: true });
+
+    expect(electron.scan).toHaveBeenCalledWith({ deep: true });
+    expect(logged()).toContain('Claude — IndexedDB (state)');
+    expect(logged()).toContain('DEEP mode: Electron apps also report their state folders');
+    expect(logged()).toContain('`clean` lists them only with --risky or --category electron');
+  });
+
+  it('says --deep does nothing for a category other than electron', async () => {
+    const other = scanner('logs', 'safe', [item('logs', 'a log')]);
+    vi.mocked(getAllScanners).mockReturnValue([other] as never);
+
+    await scanCommand({ deep: true, category: 'logs' });
+
+    expect(logged()).toContain('leaves Electron out');
+  });
+});

@@ -12,12 +12,7 @@ import { flushWarnings } from '../utils/warnings.js';
 export async function cleanCommand(options: CleanOptions = {}): Promise<void> {
   console.log(chalk.bold.cyan('\n🧹 mac-deep-clean\n'));
   if (options.dryRun) console.log(chalk.yellow('DRY RUN — no files will be deleted.\n'));
-  if (options.deep)
-    console.log(
-      chalk.yellow(
-        'DEEP mode: Electron app state folders will appear — review carefully before selecting.\n',
-      ),
-    );
+  if (options.deep) console.log(chalk.yellow(`${deepNotice(options)}\n`));
 
   let scanners = getAllScanners();
   if (options.category) {
@@ -167,6 +162,18 @@ async function executeCleanup(selected: ScanResult[], dryRun: boolean): Promise<
     if (allErrors.length > 20) console.log(chalk.grey(`  … and ${allErrors.length - 20} more`));
   }
   console.log();
+}
+
+function deepNotice({ risky, category, yes }: CleanOptions): string {
+  if (category && category !== 'electron')
+    return 'DEEP mode: --deep only adds Electron app state, and this --category leaves Electron out.';
+  if (!risky && !category)
+    return 'DEEP mode: Electron app state folders stay hidden; add --risky or --category electron to list them.';
+  if (yes && !category)
+    return 'DEEP mode: --yes skips Electron app state folders; only --category electron picks them.';
+  if (yes)
+    return 'DEEP mode: --yes picks every Electron app state folder it finds. Deleting them loses conversations and workspaces.';
+  return 'DEEP mode: Electron app state folders will appear, unticked — review carefully before selecting.';
 }
 
 function skippedMessage(count: number, options: { risky?: boolean; category?: string }): string {

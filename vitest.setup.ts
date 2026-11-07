@@ -44,10 +44,12 @@ function kernelPath(raw: string, followLeaf: boolean, hops = 0): string {
   }
 }
 
-// A string, a Buffer or a file: URL names a path; a file descriptor or a FileHandle does not.
+// A string, a Buffer, any other byte array or a file: URL names a path; a file descriptor or a FileHandle does not.
+// The guard covers the calls listed below; open with a write flag, createWriteStream and chmod are not guarded.
 function pathOf(arg: unknown): string | undefined {
   if (arg instanceof URL) return fileURLToPath(arg);
-  if (Buffer.isBuffer(arg)) return arg.toString();
+  if (ArrayBuffer.isView(arg))
+    return Buffer.from(arg.buffer, arg.byteOffset, arg.byteLength).toString();
   return typeof arg === 'string' ? arg : undefined;
 }
 

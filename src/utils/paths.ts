@@ -103,6 +103,11 @@ export function isInside(parent: string, child: string): boolean {
   return target === root || target.startsWith(root.endsWith('/') ? root : `${root}/`);
 }
 
+/** True when `child` lies below `parent` and is not `parent` itself. */
+export function isStrictlyInside(parent: string, child: string): boolean {
+  return isInside(parent, child) && !isInside(child, parent);
+}
+
 export function isProtectedPath(target: string): boolean {
   const resolved = fold(target);
   if (PROTECTED_EXACT.some((p) => fold(p) === resolved)) return true;

@@ -2,7 +2,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { assertSafeToDelete, isInside, isProtectedPath } from './paths.js';
+import { assertSafeToDelete, isInside, isProtectedPath, isStrictlyInside } from './paths.js';
 
 describe('isProtectedPath', () => {
   it('protects /System', () => {
@@ -182,6 +182,23 @@ describe('isInside with the filesystem root', () => {
   it('holds everything when the parent is /', () => {
     expect(isInside('/', '/')).toBe(true);
     expect(isInside('/', '/opt/homebrew')).toBe(true);
+  });
+});
+
+describe('isStrictlyInside', () => {
+  it('holds for a path below the parent, whatever the case', () => {
+    expect(isStrictlyInside('/opt', '/opt/homebrew')).toBe(true);
+    expect(isStrictlyInside('/OPT', '/opt/homebrew/bin')).toBe(true);
+    expect(isStrictlyInside('/', '/opt')).toBe(true);
+  });
+
+  it('is false for the parent itself, a sibling with a shared prefix and an unrelated path', () => {
+    expect(isStrictlyInside('/opt', '/opt')).toBe(false);
+    expect(isStrictlyInside('/opt', '/OPT/')).toBe(false);
+    expect(isStrictlyInside('/opt', '/optical')).toBe(false);
+    expect(isStrictlyInside('/opt', '/tmp/opt')).toBe(false);
+    expect(isStrictlyInside('/opt/homebrew', '/opt')).toBe(false);
+    expect(isStrictlyInside('/', '/')).toBe(false);
   });
 });
 

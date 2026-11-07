@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Paths are judged as the kernel resolves them, not as they are spelled. A deletion target that
+  is not a symlink is checked under its real path, so `~/.ẞh` (capital sharp s, which the default
+  volume reads as `ss`) can no longer delete `~/.ssh`, and the case fold now maps that letter to
+  `ss` too. Orphaned LaunchAgents read the volume of a program from its resolved path, so a
+  program reached through a symlink to `/Volumes` or spelled `/Volumeſ` (long s) on a disk that
+  is not mounted is no longer taken for a missing one.
 - A `SUDO_USER` of `.` or `..` is no longer taken as a user name: it no longer adds `/Users` or
   `/` to the protected homes, and the Homebrew and Xcode commands refuse it instead of running
   `sudo -u ..`. The user name check moved out of the module that runs shell commands, so tests

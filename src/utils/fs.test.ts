@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +9,7 @@ import {
   isDirectory,
   listDir,
   pathExists,
+  resolveDeletionTarget,
   safeRemove,
   sizeExcluding,
 } from './fs.js';
@@ -157,6 +159,35 @@ describe('safeRemove', () => {
   it('refuses a protected path before touching anything', async () => {
     await expect(safeRemove(os.homedir())).rejects.toThrow(/Refusing to delete/);
     await expect(safeRemove('/')).rejects.toThrow(/Refusing to delete/);
+  });
+});
+
+// The default macOS volume folds case and Unicode spellings; a case-sensitive volume (Linux CI, or a
+// case-sensitive APFS) does not, so these run only where the temp dir answers to an upper-cased spelling.
+const tmpFoldsCase = fs.existsSync(os.tmpdir().toUpperCase());
+
+describe.skipIf(!tmpFoldsCase)('a leaf spelled another way on the default volume', () => {
+  it('is checked and removed under the spelling the kernel resolves it to', async () => {
+    await fsp.mkdir(path.join(root, 'Folder'));
+    const real = await fsp.realpath(root);
+    expect(await resolveDeletionTarget(path.join(root, 'FOLDER'))).toBe(path.join(real, 'Folder'));
+  });
+
+  it('cannot reach a protected folder through a capital sharp s', async () => {
+    const home = path.join(root, 'home');
+    await fsp.mkdir(path.join(home, '.ssh'), { recursive: true });
+    await fsp.writeFile(path.join(home, '.ssh', 'id_decoy'), 'x');
+    try {
+      vi.resetModules();
+      vi.stubEnv('HOME', home);
+      vi.spyOn(os, 'userInfo').mockReturnValue({ homedir: home } as os.UserInfo<string>);
+      const fresh = await import('./fs.js');
+      await expect(fresh.safeRemove(path.join(home, '.ẞh'))).rejects.toThrow(/protected/);
+      expect(await pathExists(path.join(home, '.ssh', 'id_decoy'))).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });
 

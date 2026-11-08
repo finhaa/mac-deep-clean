@@ -133,15 +133,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `~/x`, not `~/E/x`.
 - Under sudo, the home folder of the user who ran sudo (`/Users/$SUDO_USER`) is protected like
   `HOME`: the folder itself, its `Library` containers and the protected folders inside it.
-- Test runs refuse the Node file calls that delete, move, overwrite or truncate
-  outside the temp dir: `rm`, `rmdir`, `unlink`, `rename`, `truncate`, `cp`,
-  `copyFile`, `writeFile` and `appendFile`, in promise, callback and sync form,
+- Test runs refuse the Node file calls that delete, move, create, overwrite, truncate
+  or change outside the temp dir: `rm`, `rmdir`, `unlink`, `rename`, `truncate`, `cp`,
+  `copyFile`, `writeFile`, `appendFile`, `open` (only with a write, create, truncate or
+  append flag), `createWriteStream`, `mkdir`, `mkdtemp`, `mkdtempDisposable`, `symlink`,
+  `link` (both paths), `utimes`, `lutimes`, `chmod`, `lchmod`, `chown` and `lchown`,
+  in promise, callback and sync form,
   through named imports, `file:` URLs, Buffers and any other byte array, a symlinked
-  parent, a trailing slash and a symlink the call follows. The temp dir itself is refused
-  when it is `/` or holds the home folder. Not guarded: `open` with a write flag,
-  `createWriteStream`, `chmod`, `chown` and `utimes` (also their `l` forms), `link`,
-  `symlink`, `mkdir`, `mkdtemp`, every call on a file descriptor or FileHandle
-  (`ftruncate`, `write`, `writev`) and child processes (`rm`, `find -delete`).
+  parent, a missing folder under a symlink, a symlink target that climbs out with `..`,
+  a trailing slash and a symlink the call follows. A call that changes a file also
+  refuses one in the temp dir with more than one hard link, since another link may lie
+  outside it. The temp dir itself is refused
+  when it is `/` or holds the home folder. Not guarded: every call on a file descriptor
+  or FileHandle (`fchmod`, `fchown`, `futimes`, `ftruncate`, `write`, `writev`; one opened
+  for writing went through the guarded `open`, but `fchmod`, `fchown` and `futimes` also
+  work on one opened for reading) and child processes (`rm`, `find -delete`).
 - The test that no two scanners offer the same path now runs in a temp home folder,
   fails when a scanner that should find something offers nothing, and pins which
   scanners may flag an item irreversible. `clean --help` says `--deep` with `--yes`

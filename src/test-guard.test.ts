@@ -3,10 +3,21 @@ import fsp, { rm as namedRm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const never = (base: string) => path.join(base, 'mdc-never-here');
 const outside = ['/usr/bin', os.homedir()];
+
+// A red run must not leak its temp dirs: afterEach runs when the test body throws.
+const made: string[] = [];
+async function tempDir(): Promise<string> {
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+  made.push(dir);
+  return dir;
+}
+afterEach(async () => {
+  for (const dir of made.splice(0)) await fsp.rm(dir, { recursive: true, force: true });
+});
 
 describe('vitest.setup.ts delete guard', () => {
   // Only paths that do not exist: if the guard regressed, these tests must still delete nothing.
@@ -69,7 +80,7 @@ describe('vitest.setup.ts delete guard', () => {
   });
 
   it('refuses a path under a symlink in the temp dir that points outside it', async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+    const dir = await tempDir();
     const link = path.join(dir, 'link');
     await fsp.symlink(os.homedir(), link);
     await expect(fsp.rm(path.join(link, 'mdc-never-here'), { force: true })).rejects.toThrow(
@@ -78,21 +89,19 @@ describe('vitest.setup.ts delete guard', () => {
     expect(() => fs.rmSync(path.join(link, 'mdc-never-here'), { force: true })).toThrow(
       /test guard/,
     );
-    await fsp.rm(dir, { recursive: true, force: true });
   });
 
   it('still lets a test remove the symlink itself, which removes only the link', async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+    const dir = await tempDir();
     const target = path.join(dir, 'target');
     await fsp.mkdir(target);
     await fsp.symlink(target, path.join(dir, 'link'));
     await fsp.rm(path.join(dir, 'link'));
     await expect(fsp.stat(target)).resolves.toBeDefined();
-    await fsp.rm(dir, { recursive: true, force: true });
   });
 
   it('still deletes, copies, renames and truncates inside the temp dir', async () => {
-    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+    const dir = await tempDir();
     const a = path.join(dir, 'a');
     await fsp.writeFile(a, 'xyz');
     await fsp.cp(a, path.join(dir, 'b'));
@@ -110,26 +119,24 @@ describe('vitest.setup.ts delete guard', () => {
   // fails the assertion without deleting or creating anything that matters.
   describe('acts on the path the kernel acts on', () => {
     async function linkTo(target: string): Promise<{ dir: string; link: string }> {
-      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const dir = await tempDir();
       const link = path.join(dir, 'link');
       await fsp.symlink(target, link);
       return { dir, link };
     }
 
     it('refuses a trailing slash on a symlink in the temp dir that points outside it', async () => {
-      const { dir, link } = await linkTo('/usr/bin');
+      const { link } = await linkTo('/usr/bin');
       await expect(fsp.rm(`${link}/`)).rejects.toThrow(/test guard/);
       await expect(fsp.rmdir(`${link}/`)).rejects.toThrow(/test guard/);
       expect(() => fs.rmSync(`${link}/`)).toThrow(/test guard/);
       expect(() => fs.rmSync(`${link}/.`)).toThrow(/test guard/);
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it('refuses to truncate through a symlink in the temp dir that points outside it', async () => {
-      const { dir, link } = await linkTo('/usr/bin/mdc-never-here');
+      const { link } = await linkTo('/usr/bin/mdc-never-here');
       await expect(fsp.truncate(link)).rejects.toThrow(/test guard/);
       expect(() => fs.truncateSync(link)).toThrow(/test guard/);
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it('refuses a file: URL outside the temp dir, whatever the working directory', async () => {
@@ -139,12 +146,11 @@ describe('vitest.setup.ts delete guard', () => {
     });
 
     it('still accepts a file: URL inside the temp dir', async () => {
-      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const dir = await tempDir();
       const file = path.join(dir, 'f');
       await fsp.writeFile(file, 'x');
       await fsp.rm(pathToFileURL(file));
       await expect(fsp.stat(file)).rejects.toThrow();
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it.each([
@@ -166,15 +172,14 @@ describe('vitest.setup.ts delete guard', () => {
     });
 
     it('refuses a write through a symlink in the temp dir that points outside it', async () => {
-      const { dir, link } = await linkTo('/usr/bin/mdc-never-here');
+      const { link } = await linkTo('/usr/bin/mdc-never-here');
       await expect(fsp.writeFile(link, 'x')).rejects.toThrow(/test guard/);
       await expect(fsp.copyFile(import.meta.filename, link)).rejects.toThrow(/test guard/);
       await expect(fsp.cp(import.meta.filename, link)).rejects.toThrow(/test guard/);
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it('still lets a test write, append and copy inside the temp dir, and write to a file handle', async () => {
-      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const dir = await tempDir();
       const a = path.join(dir, 'a');
       await fsp.writeFile(a, 'x');
       await fsp.appendFile(a, 'y');
@@ -185,7 +190,6 @@ describe('vitest.setup.ts delete guard', () => {
       await handle.close();
       expect((await fsp.readFile(path.join(dir, 'b'))).toString()).toBe('xy');
       expect((await fsp.readFile(path.join(dir, 'd'))).toString()).toBe('h');
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it('refuses a Buffer path outside the temp dir', async () => {
@@ -211,11 +215,10 @@ describe('vitest.setup.ts delete guard', () => {
     });
 
     it('does not loop on a symlink cycle', async () => {
-      const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-guard-'));
+      const dir = await tempDir();
       await fsp.symlink(path.join(dir, 'b'), path.join(dir, 'a'));
       await fsp.symlink(path.join(dir, 'a'), path.join(dir, 'b'));
       await expect(fsp.truncate(path.join(dir, 'a'))).rejects.toThrow(/ELOOP/);
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it('lets a test remove or move a symlink that points outside the temp dir', async () => {
@@ -225,7 +228,6 @@ describe('vitest.setup.ts delete guard', () => {
       await fsp.symlink('/usr/bin', link);
       await fsp.rm(link);
       await expect(fsp.lstat(link)).rejects.toThrow();
-      await fsp.rm(dir, { recursive: true, force: true });
     });
 
     it.each([
@@ -242,6 +244,211 @@ describe('vitest.setup.ts delete guard', () => {
       }
     });
   });
+
+  // Under /usr/bin only: a regressed guard that let a create through would make it in the home folder.
+  describe('refuses to create or change anything outside the temp dir', () => {
+    const target = never('/usr/bin');
+    const { O_WRONLY, O_RDWR, O_CREAT, O_TRUNC, O_APPEND } = fs.constants;
+
+    it('mkdir and mkdtemp, in every flavour', async () => {
+      await expect(fsp.mkdir(target)).rejects.toThrow(/test guard/);
+      await expect(fsp.mkdir(path.join(target, 'x'), { recursive: true })).rejects.toThrow(
+        /test guard/,
+      );
+      expect(() => fs.mkdirSync(target)).toThrow(/test guard/);
+      expect(() => fs.mkdir(target, () => {})).toThrow(/test guard/);
+      await expect(fsp.mkdtemp(`${target}-`)).rejects.toThrow(/test guard/);
+      expect(() => fs.mkdtempSync(`${target}-`)).toThrow(/test guard/);
+      expect(() => fs.mkdtemp(`${target}-`, () => {})).toThrow(/test guard/);
+    });
+
+    it('symlink and link, in every flavour', async () => {
+      const dir = await tempDir();
+      const file = path.join(dir, 'f');
+      await fsp.writeFile(file, 'x');
+      await expect(fsp.symlink('/usr/bin', target)).rejects.toThrow(/test guard/);
+      expect(() => fs.symlinkSync('/usr/bin', target)).toThrow(/test guard/);
+      expect(() => fs.symlink('/usr/bin', target, () => {})).toThrow(/test guard/);
+      await expect(fsp.link(file, target)).rejects.toThrow(/test guard/);
+      expect(() => fs.linkSync(file, target)).toThrow(/test guard/);
+      expect(() => fs.link(file, target, () => {})).toThrow(/test guard/);
+    });
+
+    it('a hard link in the temp dir to a file outside it, which a write would change', async () => {
+      const dir = await tempDir();
+      const alias = path.join(dir, 'alias');
+      await expect(fsp.link('/usr/bin/true', alias)).rejects.toThrow(/test guard/);
+      expect(() => fs.linkSync('/usr/bin/true', alias)).toThrow(/test guard/);
+      expect(() => fs.link('/usr/bin/true', alias, () => {})).toThrow(/test guard/);
+    });
+
+    it('utimes, chmod and chown and their l forms, in every flavour', async () => {
+      for (const name of ['utimes', 'lutimes', 'chmod', 'lchmod', 'chown', 'lchown'] as const) {
+        const args = name.endsWith('utimes') ? [1, 1] : name.endsWith('chmod') ? [0o644] : [0, 0];
+        const call = (fn: unknown, ...rest: unknown[]) =>
+          (fn as (...a: unknown[]) => unknown)(target, ...args, ...rest);
+        await expect(call(fsp[name])).rejects.toThrow(/test guard/);
+        // fs.lchmod exists only on macOS.
+        if (fs[name] === undefined) continue;
+        expect(() => call(fs[`${name}Sync`])).toThrow(/test guard/);
+        expect(() => call(fs[name], () => {})).toThrow(/test guard/);
+      }
+    });
+
+    it.each([
+      ['w'],
+      ['a'],
+      ['r+'],
+      ['wx'],
+      [O_WRONLY | O_CREAT],
+      [O_WRONLY],
+      [O_RDWR],
+      [O_CREAT],
+      [O_TRUNC],
+      [O_APPEND],
+    ])('open with the write flag %s, in every flavour', async (flags) => {
+      await expect(fsp.open(target, flags)).rejects.toThrow(/test guard/);
+      expect(() => fs.openSync(target, flags)).toThrow(/test guard/);
+      expect(() => fs.open(target, flags, () => {})).toThrow(/test guard/);
+    });
+
+    it('createWriteStream, and a WriteStream built directly', async () => {
+      expect(() => fs.createWriteStream(target)).toThrow(/test guard/);
+      // The typings hide the path argument that the runtime constructor takes.
+      const WriteStream = fs.WriteStream as unknown as new (p: string) => fs.WriteStream;
+      const stream = new WriteStream(target);
+      await expect(new Promise((_resolve, reject) => stream.on('error', reject))).rejects.toThrow(
+        /test guard/,
+      );
+    });
+
+    it('refuses to change through a symlink in the temp dir that points outside it', async () => {
+      const dir = await tempDir();
+      const link = path.join(dir, 'link');
+      await fsp.symlink(target, link);
+      await expect(fsp.utimes(link, 1, 1)).rejects.toThrow(/test guard/);
+      await expect(fsp.chmod(link, 0o644)).rejects.toThrow(/test guard/);
+      await expect(fsp.chown(link, 0, 0)).rejects.toThrow(/test guard/);
+      await expect(fsp.open(link, 'w')).rejects.toThrow(/test guard/);
+      expect(() => fs.createWriteStream(link)).toThrow(/test guard/);
+      await expect(fsp.link(link, path.join(dir, 'alias'))).rejects.toThrow(/test guard/);
+    });
+
+    it('still opens a file outside the temp dir for reading', async () => {
+      const handle = await fsp.open(import.meta.filename);
+      await handle.close();
+      fs.closeSync(fs.openSync(import.meta.filename, 'r'));
+      fs.closeSync(fs.openSync(import.meta.filename, fs.constants.O_RDONLY));
+      await new Promise((resolve) =>
+        fs.open(import.meta.filename, (_e, fd) => fs.close(fd, resolve)),
+      );
+    });
+
+    it('refuses a change under a symlink in the temp dir whose next folder does not exist', async () => {
+      const dir = await tempDir();
+      const link = path.join(dir, 'link');
+      await fsp.symlink('/usr/bin', link);
+      const src = path.join(dir, 'src');
+      await fsp.writeFile(src, 'x');
+      await expect(fsp.cp(src, path.join(link, 'mdc-no-such-dir', 'x'))).rejects.toThrow(
+        /test guard/,
+      );
+      expect(() => fs.cpSync(src, path.join(link, 'mdc-no-such-dir', 'y'))).toThrow(/test guard/);
+      await expect(
+        fsp.mkdir(path.join(link, 'mdc-no-such-dir', 'z'), { recursive: true }),
+      ).rejects.toThrow(/test guard/);
+      await expect(
+        fsp.rm(path.join(link, 'mdc-no-such-dir', 'x'), { force: true }),
+      ).rejects.toThrow(/test guard/);
+    });
+
+    it('refuses a symlink whose target climbs out through another symlink', async () => {
+      const dir = await tempDir();
+      await fsp.symlink('/usr/bin', path.join(dir, 'bin'));
+      const climbing = path.join(dir, 'climbing');
+      await fsp.symlink(`${dir}/bin/../mdc-never-here`, climbing);
+      await expect(fsp.truncate(climbing)).rejects.toThrow(/test guard/);
+      await fsp.symlink('bin/../mdc-never-here', path.join(dir, 'relative'));
+      await expect(fsp.truncate(path.join(dir, 'relative'))).rejects.toThrow(/test guard/);
+    });
+
+    it('refuses to change a file in the temp dir that another hard link shares', async () => {
+      const dir = await tempDir();
+      const file = path.join(dir, 'f');
+      await fsp.writeFile(file, 'x');
+      await fsp.link(file, path.join(dir, 'twin'));
+      await expect(fsp.writeFile(file, 'y')).rejects.toThrow(/test guard/);
+      await expect(fsp.appendFile(file, 'y')).rejects.toThrow(/test guard/);
+      await expect(fsp.truncate(file)).rejects.toThrow(/test guard/);
+      await expect(fsp.copyFile(import.meta.filename, file)).rejects.toThrow(/test guard/);
+      await expect(fsp.cp(import.meta.filename, file)).rejects.toThrow(/test guard/);
+      await expect(fsp.open(file, 'r+')).rejects.toThrow(/test guard/);
+      expect(() => fs.createWriteStream(file)).toThrow(/test guard/);
+      await expect(fsp.utimes(file, 1, 1)).rejects.toThrow(/test guard/);
+      await expect(fsp.lutimes(file, 1, 1)).rejects.toThrow(/test guard/);
+      await expect(fsp.chmod(file, 0o600)).rejects.toThrow(/test guard/);
+      await expect(
+        fsp.lchown(file, process.getuid?.() ?? 0, process.getgid?.() ?? 0),
+      ).rejects.toThrow(/test guard/);
+      await expect(
+        fsp.chown(file, process.getuid?.() ?? 0, process.getgid?.() ?? 0),
+      ).rejects.toThrow(/test guard/);
+      if (fs.lchmod !== undefined)
+        await expect(fsp.lchmod(file, 0o600)).rejects.toThrow(/test guard/);
+      expect((await fsp.readFile(path.join(dir, 'twin'))).toString()).toBe('x');
+      await fsp.unlink(path.join(dir, 'twin'));
+      await fsp.writeFile(file, 'y');
+      expect((await fsp.readFile(file)).toString()).toBe('y');
+    });
+
+    it('still lets a test create, link, open for writing and change metadata inside the temp dir', async () => {
+      const dir = await tempDir();
+      await fsp.mkdir(path.join(dir, 'a', 'b'), { recursive: true });
+      fs.mkdirSync(path.join(dir, 'c'));
+      const inner = await fsp.mkdtemp(path.join(dir, 'm-'));
+      expect(fs.mkdtempSync(path.join(dir, 'm-')).startsWith(path.join(dir, 'm-'))).toBe(true);
+      const file = path.join(inner, 'f');
+      const handle = await fsp.open(file, 'w');
+      await handle.writeFile('x');
+      await handle.close();
+      fs.closeSync(fs.openSync(file, 'a'));
+      await new Promise<void>((resolve, reject) =>
+        fs
+          .createWriteStream(path.join(dir, 's'))
+          .end('s', () => resolve())
+          .on('error', reject),
+      );
+      await fsp.symlink('/usr/bin', path.join(dir, 'outward'));
+      fs.symlinkSync(file, path.join(dir, 'inward'));
+      await fsp.link(file, path.join(dir, 'twin'));
+      await fsp.unlink(path.join(dir, 'twin'));
+      await fsp.utimes(file, 1, 1);
+      await fsp.lutimes(path.join(dir, 'outward'), 1, 1);
+      await fsp.chmod(file, 0o600);
+      await fsp.chown(file, process.getuid?.() ?? 0, process.getgid?.() ?? 0);
+      await fsp.lchown(path.join(dir, 'outward'), process.getuid?.() ?? 0, process.getgid?.() ?? 0);
+      if (fs.lchmod !== undefined) await fsp.lchmod(path.join(dir, 'outward'), 0o700);
+      // A folder always has more than one link, its own `.` and each subfolder's `..`.
+      await fsp.chmod(dir, 0o700);
+      await fsp.utimes(dir, 1, 1);
+      expect((await fsp.stat(file)).mode & 0o777).toBe(0o600);
+      expect((await fsp.readFile(path.join(dir, 's'))).toString()).toBe('s');
+      expect((await fsp.stat('/usr/bin')).isDirectory()).toBe(true);
+    });
+  });
+
+  describe('removes the temp dirs a test made, even when it fails', () => {
+    let left = '';
+    it('makes a temp dir', async () => {
+      left = await tempDir();
+      await expect(fsp.stat(left)).resolves.toBeDefined();
+    });
+
+    it('finds it gone in the next test', async () => {
+      expect(left).not.toBe('');
+      await expect(fsp.stat(left)).rejects.toThrow(/ENOENT/);
+    });
+  });
 });
 
 // The guard replaces each call it covers with an anonymous wrapper; every original has its own name.
@@ -249,28 +456,22 @@ describe('what the changelog and the setup comment say the guard covers', () => 
   const read = (name: string) =>
     fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8').replace(/\s+/g, ' ');
   const isGuarded = (fn: unknown) => typeof fn === 'function' && fn.name === '';
-  const named = (text: string) => [...text.matchAll(/`(\w+)`/g)].map((m) => m[1]);
-  const guarded = () =>
-    Object.entries(fsp)
-      .filter(([, fn]) => isGuarded(fn))
-      .map(([name]) => name)
-      .sort();
+  const named = (text: string) => [...text.matchAll(/`(\w+)`/g)].map((m) => m[1] ?? '');
   const fsCalls = fs as unknown as Record<string, unknown>;
+  const fspCalls = fsp as unknown as Record<string, unknown>;
+  // A call counts once, by its promise and callback name; some exist only as a callback or only on some Node versions.
+  const guarded = () =>
+    [
+      ...new Set(
+        [...Object.entries(fsp), ...Object.entries(fs)]
+          .filter(([, fn]) => isGuarded(fn))
+          .map(([name]) => name.replace(/Sync$/, '')),
+      ),
+    ].sort();
+  const forms = (name: string) =>
+    [fspCalls[name], fsCalls[name], fsCalls[`${name}Sync`]].filter((fn) => fn !== undefined);
 
-  const UNGUARDED = [
-    'open',
-    'createWriteStream',
-    'chmod',
-    'chown',
-    'utimes',
-    'link',
-    'symlink',
-    'mkdir',
-    'mkdtemp',
-    'ftruncate',
-    'write',
-    'writev',
-  ];
+  const UNGUARDED = ['fchmod', 'fchown', 'futimes', 'ftruncate', 'write', 'writev'];
 
   it('lists in the changelog exactly the calls the guard wraps', () => {
     const list =
@@ -278,14 +479,18 @@ describe('what the changelog and the setup comment say the guard covers', () => 
         read('CHANGELOG.md'),
       )?.[1];
     expect(list).toBeDefined();
-    expect(named(list ?? '').sort()).toEqual(guarded());
+    const onThisNode = named(list ?? '').filter((name) => forms(name).length > 0);
+    expect(onThisNode.sort()).toEqual(guarded());
   });
 
-  it('wraps the callback and sync forms of every guarded call too', () => {
-    const missing = guarded().filter(
-      (name) => !isGuarded(fsCalls[name]) || !isGuarded(fsCalls[`${name}Sync`]),
-    );
+  it('wraps the promise, callback and sync forms of every guarded call that Node has', () => {
+    const missing = guarded().filter((name) => !forms(name).every(isGuarded));
     expect(missing).toEqual([]);
+    for (const name of ['rm', 'open', 'mkdir', 'link', 'utimes']) {
+      expect(forms(name).filter(isGuarded)).toHaveLength(3);
+    }
+    expect(fspCalls.createWriteStream).toBeUndefined();
+    expect(fsCalls.createWriteStreamSync).toBeUndefined();
   });
 
   it.each(UNGUARDED)('says %s is not guarded, and it is not', (name) => {

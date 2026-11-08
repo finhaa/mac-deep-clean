@@ -49,7 +49,13 @@ export function truncate(str: string, max: number): string {
 /** `~/x` for a path inside HOME; a sibling such as `<HOME>ael` is not inside it and stays as it is. */
 export function tildify(p: string): string {
   if (!isInside(HOME, p)) return p;
-  const home = path.resolve(HOME).normalize('NFC');
-  const rest = path.resolve(p).normalize('NFC').slice(home.length);
-  return rest === '' || rest.startsWith('/') ? `~${rest}` : `~/${rest}`;
+  const depth = segments(HOME).length;
+  const rest = segments(p).slice(depth);
+  return rest.length === 0 ? '~' : `~/${rest.join('/')}`;
+}
+
+// Folding can change a name's length (ß is ss) but never adds or removes a separator, so the matched home is
+// exactly the leading segments of the child.
+function segments(p: string): string[] {
+  return path.resolve(p).split('/').filter(Boolean);
 }

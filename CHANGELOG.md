@@ -128,6 +128,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `git-tmp-packs` labels use the same `~` shortening as every other label, so a file outside
   the home shows its full path instead of `~/../..`, and with `HOME=/` a path prints as `~/etc/x`,
   not `~etc/x`.
+- `~` shortening cuts the home off by folder names, not by its length, so a path that matches the
+  home only after case folding (`/Users/STRASSE/x` under a home of `/Users/straße`) prints as
+  `~/x`, not `~/E/x`.
 - Under sudo, the home folder of the user who ran sudo (`/Users/$SUDO_USER`) is protected like
   `HOME`: the folder itself, its `Library` containers and the protected folders inside it.
 - Test runs refuse the Node file calls that delete, move, overwrite or truncate

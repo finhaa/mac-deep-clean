@@ -1,8 +1,16 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MB, bigBuffer } from '../testing/files.js';
+
+const sizes = vi.hoisted(() => new Map<string, number>());
+
+vi.mock('../utils/fs.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/fs.js')>();
+  return { ...actual, getSize: async (p: string) => sizes.get(p) ?? actual.getSize(p) };
+});
+
 import { ProjectArtifactsScanner } from './project-artifacts.js';
 
 let root: string;
@@ -12,6 +20,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  sizes.clear();
   await fs.rm(root, { recursive: true, force: true });
 });
 
@@ -136,6 +145,20 @@ describe('ProjectArtifactsScanner.scan filters', () => {
     await fs.mkdir(path.join(root, 'nine/node_modules'), { recursive: true });
     await fs.writeFile(path.join(root, 'nine/node_modules/blob.bin'), Buffer.alloc(9 * MB, 1));
     expect(await scanner(root).scan()).toEqual([]);
+  });
+
+  it('draws the 10 MB line at the byte', async () => {
+    for (const [name, size] of [
+      ['below', 10 * MB - 1],
+      ['at', 10 * MB],
+      ['above', 10 * MB + 1],
+    ] as const) {
+      const dir = path.join(root, name, 'node_modules');
+      await fs.mkdir(dir, { recursive: true });
+      sizes.set(dir, size);
+    }
+    const paths = (await scanner(root).scan()).map((r) => path.relative(root, r.path));
+    expect(paths).toEqual(['above/node_modules', 'at/node_modules']);
   });
 
   it('skips artifacts smaller than 10 MB', async () => {

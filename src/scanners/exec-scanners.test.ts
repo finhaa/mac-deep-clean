@@ -225,3 +225,47 @@ describe('DockerScanner', () => {
     expect(errors[0]).toContain('prune failed');
   });
 });
+
+describe('size floors, pinned at the byte', () => {
+  it('HomebrewScanner reports a cache folder of a single byte', async () => {
+    const cache = await put('brew-cache', 1);
+    runMock.mockResolvedValueOnce(ok()).mockResolvedValueOnce(ok(cache));
+    expect((await new HomebrewScanner().scan()).map((r) => r.size)).toEqual([1]);
+  });
+
+  it.each([
+    ['xcrun:simctl:unavailable', 'Library/Developer/CoreSimulator/Devices'],
+    ['DerivedData', 'Library/Developer/Xcode/DerivedData'],
+    ['Archives', 'Library/Developer/Xcode/Archives'],
+  ])(
+    'IosSimulatorsScanner skips an empty %s folder and reports one of a single byte',
+    async (name, folder) => {
+      existsMock.mockResolvedValue(true);
+      await put(folder, 0);
+      expect(await new IosSimulatorsScanner().scan()).toEqual([]);
+      await put(folder, 1);
+      expect(
+        (await new IosSimulatorsScanner().scan()).map((r) => [path.basename(r.path), r.size]),
+      ).toEqual([[name, 1]]);
+    },
+  );
+
+  it('DockerScanner skips an empty VM folder and reports one of a single byte', async () => {
+    existsMock.mockResolvedValue(true);
+    runMock.mockResolvedValue(fail());
+    const vms = await put('Library/Containers/com.docker.docker/Data/vms', 0);
+    expect(await new DockerScanner().scan()).toEqual([]);
+    h.sizes.set(vms, 1);
+    expect((await new DockerScanner().scan()).map((r) => [r.path, r.size])).toEqual([[vms, 1]]);
+  });
+
+  it('DockerScanner offers no prune for nothing reclaimable and offers one for a single byte', async () => {
+    existsMock.mockResolvedValue(true);
+    runMock.mockResolvedValueOnce(ok('Images\t0B (0%)\n'));
+    expect(await new DockerScanner().scan()).toEqual([]);
+    runMock.mockResolvedValueOnce(ok('Images\t1B (100%)\n'));
+    expect((await new DockerScanner().scan()).map((r) => [r.path, r.size])).toEqual([
+      ['docker:system', 1],
+    ]);
+  });
+});

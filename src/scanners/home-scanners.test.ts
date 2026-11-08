@@ -452,3 +452,70 @@ describe('TempFilesScanner.scan', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('size floors, pinned at the byte', () => {
+  it.each([
+    [
+      'IosBackupsScanner',
+      () => new IosBackupsScanner(),
+      'Library/Application Support/MobileSync/Backup',
+      10 * MB,
+    ],
+    ['JetBrainsScanner', () => new JetBrainsScanner(), 'Library/Caches/JetBrains', 10 * MB],
+    ['UserCacheScanner', () => new UserCacheScanner(), 'Library/Caches', 50 * MB],
+  ] as [string, () => BaseScanner, string, number][])(
+    '%s skips a folder one byte under its floor and keeps one at it and one above',
+    async (_name, make, parent, floor) => {
+      await put(`${parent}/below`, floor - 1);
+      await put(`${parent}/at`, floor);
+      await put(`${parent}/above`, floor + 1);
+      expect(rel(await make().scan())).toEqual([`${parent}/above`, `${parent}/at`]);
+    },
+  );
+
+  it('ScreenRecordingScanner draws the 10 MB line at the byte', async () => {
+    await put('Library/Application Support/so.cap.desktop', 10 * MB + 1);
+    await put('Library/Application Support/Screen Studio', 10 * MB);
+    await put('Library/Application Support/com.obsproject.obs-studio', 10 * MB - 1);
+    const results = await new ScreenRecordingScanner().scan();
+    expect(results.map((r) => r.label).sort()).toEqual(['Cap data', 'Screen Studio data']);
+  });
+
+  it('ElectronAppsScanner --deep draws the 100 MB state line at the byte', async () => {
+    const app = 'Library/Application Support/Claude';
+    await put(`${app}/IndexedDB`, 100 * MB);
+    await put(`${app}/Local Storage`, 100 * MB - 1);
+    await put(`${app}/vm_bundles`, 100 * MB + 1);
+    const state = (await new ElectronAppsScanner().scan({ deep: true })).filter((r) =>
+      r.label.endsWith('(state)'),
+    );
+    expect(rel(state)).toEqual([`${app}/IndexedDB`, `${app}/vm_bundles`]);
+  });
+
+  it('AndroidScanner skips an empty SDK and reports one of a single byte', async () => {
+    await put('Library/Android/sdk', 0);
+    expect(await new AndroidScanner().scan()).toEqual([]);
+    await put('Library/Android/sdk', 1);
+    expect(rel(await new AndroidScanner().scan())).toEqual(['Library/Android/sdk']);
+  });
+
+  it.each([
+    [
+      'MailDownloadsScanner',
+      new MailDownloadsScanner(),
+      'Library/Containers/com.apple.mail/Data/Library/Mail Downloads',
+    ],
+    ['SavedAppStateScanner', new SavedAppStateScanner(), 'Library/Saved Application State'],
+  ] as [string, BaseScanner, string][])(
+    '%s reports its folder from a single byte',
+    async (_name, scanner, folder) => {
+      await put(folder, 1);
+      expect(rel(await scanner.scan())).toEqual([folder]);
+    },
+  );
+
+  it('TrashScanner reports a trash that holds a single byte', async () => {
+    await put('.Trash/a', 1);
+    expect((await new TrashScanner().scan()).map((r) => r.size)).toEqual([1]);
+  });
+});

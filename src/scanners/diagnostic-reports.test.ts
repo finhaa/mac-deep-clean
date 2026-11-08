@@ -47,6 +47,11 @@ describe('DiagnosticReportsScanner', () => {
     expect((await scanner().scan()).map((r) => r.size)).toEqual([5]);
   });
 
+  it('reports a folder that holds a single byte', async () => {
+    fsMock.size = 1;
+    expect((await scanner().scan()).map((r) => r.size)).toEqual([1]);
+  });
+
   it('reports what was really freed, not what the scan expected', async () => {
     fsMock.cleared = { freed: 123, errors: [] };
     expect((await scanner().clean([item])).freed).toBe(123);

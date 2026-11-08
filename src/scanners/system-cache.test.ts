@@ -41,6 +41,14 @@ describe('SystemCacheScanner', () => {
     expect(results.every((r) => r.risk === 'moderate')).toBe(true);
   });
 
+  it('draws the 50 MB line at the byte', async () => {
+    entry('com.below', 50 * MB - 1);
+    entry('com.at', 50 * MB);
+    entry('com.above', 50 * MB + 1);
+    const results = await new SystemCacheScanner().scan();
+    expect(results.map((r) => r.label)).toEqual(['com.above', 'com.at']);
+  });
+
   it('skips hidden entries and plain files', async () => {
     entry('.hidden', 900 * MB);
     entry('file.bin', 900 * MB, false);

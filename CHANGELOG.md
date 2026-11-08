@@ -156,6 +156,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tier of every scanner, the exact deletion targets of the browser, wallpaper,
   developer cache, music and Electron scanners, the symlinked `--exclude` and target
   cases of `purge`, and that no two scanners offer the same or a nested path.
+- Added tests that pin every size floor of the scanners at the byte: one byte under, at and
+  one byte over each 1 MB, 10 MB, 50 MB and 100 MB floor, and an empty folder against one of
+  a single byte for the scanners that report anything that holds something.
 - Added tests for the folder-based scanners (Android, browsers, containers,
   developer caches, iOS backups, JetBrains, Mail, saved state, screen
   recording, user caches), Homebrew, iOS simulators, Docker, `exec`, `fs`,

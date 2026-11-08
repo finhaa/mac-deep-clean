@@ -166,6 +166,27 @@ describe('tildify with a HOME that is spelled unusually', () => {
     }
   });
 
+  it('cuts by segments when case folding changes the length of HOME', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/straße');
+      expect(fresh('/mdc-missing/STRASSE/x')).toBe('~/x');
+      expect(fresh('/mdc-missing/STRASSE')).toBe('~');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it('cuts by segments when the path is shorter than the HOME it folds to', async () => {
+    try {
+      const fresh = await freshTildify('/mdc-missing/SS-SS');
+      expect(fresh('/mdc-missing/ß-ß/xy')).toBe('~/xy');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
   it('shortens a decomposed spelling of HOME', async () => {
     try {
       const fresh = await freshTildify('/mdc-missing/jos\u00e9');

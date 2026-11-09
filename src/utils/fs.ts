@@ -74,10 +74,24 @@ export async function resolveDeletionTarget(target: string): Promise<string> {
   const resolved = path.resolve(target);
   const parent = await fs.realpath(path.dirname(resolved)).catch(() => null);
   if (!parent) return resolved;
-  const leaf = path.join(parent, path.basename(resolved));
-  const stat = await fs.lstat(leaf).catch(() => null);
-  const real = stat && !stat.isSymbolicLink() ? await fs.realpath(leaf) : leaf;
+  const real = await resolveLeaf(path.join(parent, path.basename(resolved)));
   assertSafeToDelete(real);
+  return real;
+}
+
+/**
+ * The real path of a leaf that is not a symlink, or the leaf itself when it is one or is gone. A leaf
+ * swapped between the lstat and the realpath would send the delete to wherever the swap points, so the
+ * real path must name the inode the lstat saw.
+ */
+async function resolveLeaf(leaf: string): Promise<string> {
+  const seen = await fs.lstat(leaf, { bigint: true }).catch(() => null);
+  if (!seen || seen.isSymbolicLink()) return leaf;
+  const real = await fs.realpath(leaf).catch(() => leaf);
+  const now = await fs.lstat(real, { bigint: true }).catch(() => null);
+  if (now && (now.dev !== seen.dev || now.ino !== seen.ino)) {
+    throw new Error(`Refusing to delete ${leaf}: it changed while it was being checked`);
+  }
   return real;
 }
 

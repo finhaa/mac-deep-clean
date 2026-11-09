@@ -162,6 +162,89 @@ describe('safeRemove', () => {
   });
 });
 
+describe('resolveDeletionTarget', () => {
+  let realRoot: string;
+  let realpath: typeof fsp.realpath;
+
+  beforeEach(async () => {
+    realRoot = await fsp.realpath(root);
+    realpath = fsp.realpath.bind(fsp);
+  });
+
+  const onRealpathOf = (leaf: string, before: () => void) =>
+    vi.spyOn(fsp, 'realpath').mockImplementation(async (p, options) => {
+      if (String(p) === leaf) before();
+      return realpath(p, options);
+    });
+
+  it('checks and returns the real path of a leaf spelled another way, on any volume', async () => {
+    await fsp.writeFile(path.join(root, 'Folder'), 'x');
+    await fsp.link(path.join(root, 'Folder'), path.join(root, 'Other'));
+    vi.spyOn(fsp, 'realpath').mockImplementation(async (p, options) =>
+      String(p) === path.join(realRoot, 'Folder')
+        ? path.join(realRoot, 'Other')
+        : realpath(p, options),
+    );
+    expect(await resolveDeletionTarget(path.join(root, 'Folder'))).toBe(
+      path.join(realRoot, 'Other'),
+    );
+  });
+
+  it('checks the path as given when its parent does not resolve', async () => {
+    vi.spyOn(fsp, 'realpath').mockRejectedValue(new Error('ENOENT'));
+    await expect(resolveDeletionTarget('/usr/bin')).rejects.toThrow(/protected/);
+  });
+
+  it('returns a path whose parent is missing as spelled', async () => {
+    const target = path.join(root, 'missing', 'x');
+    expect(await resolveDeletionTarget(target)).toBe(target);
+  });
+
+  it('treats a leaf that vanishes before it is resolved as already gone', async () => {
+    const leaf = path.join(realRoot, 'gone');
+    onRealpathOf(leaf, () => fs.rmSync(leaf, { recursive: true }));
+    await fsp.mkdir(leaf);
+    await expect(safeRemove(path.join(root, 'gone'))).resolves.toBeUndefined();
+    await fsp.mkdir(leaf);
+    expect((await clearDir(root)).errors).toEqual([]);
+  });
+
+  it('refuses a leaf swapped for a symlink before it is resolved and leaves the target alone', async () => {
+    const decoy = path.join(realRoot, 'decoy');
+    await fsp.mkdir(decoy);
+    await fsp.writeFile(path.join(decoy, 'keep'), 'x');
+    const dir = path.join(realRoot, 'dir');
+    const leaf = path.join(dir, 'victim');
+    onRealpathOf(leaf, () => {
+      fs.rmSync(leaf, { recursive: true });
+      fs.symlinkSync(decoy, leaf);
+    });
+    await fsp.mkdir(leaf, { recursive: true });
+    await expect(safeRemove(path.join(root, 'dir', 'victim'))).rejects.toThrow(/changed/);
+    expect(await pathExists(path.join(decoy, 'keep'))).toBe(true);
+    await fsp.rm(leaf);
+    await fsp.mkdir(leaf);
+    const { errors } = await clearDir(path.join(root, 'dir'));
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('changed');
+    expect(await pathExists(path.join(decoy, 'keep'))).toBe(true);
+  });
+
+  it('refuses a leaf whose real path has the same inode number on another device', async () => {
+    const leaf = path.join(realRoot, 'f');
+    await fsp.writeFile(leaf, 'x');
+    const lstat = fsp.lstat.bind(fsp);
+    let calls = 0;
+    vi.spyOn(fsp, 'lstat').mockImplementation(async (p, options) => {
+      const st = await lstat(p, options as { bigint: true });
+      if (String(p) === leaf && ++calls === 2) st.dev += 1n;
+      return st;
+    });
+    await expect(resolveDeletionTarget(leaf)).rejects.toThrow(/changed/);
+    expect(await pathExists(leaf)).toBe(true);
+  });
+});
+
 // The default macOS volume folds case and Unicode spellings; a case-sensitive volume (Linux CI, or a
 // case-sensitive APFS) does not, so these run only where the temp dir answers to an upper-cased spelling.
 const tmpFoldsCase = fs.existsSync(os.tmpdir().toUpperCase());

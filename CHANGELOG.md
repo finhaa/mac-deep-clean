@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ss` too. Orphaned LaunchAgents read the volume of a program from its resolved path, so a
   program reached through a symlink to `/Volumes` or spelled `/Volumeſ` (long s) on a disk that
   is not mounted is no longer taken for a missing one.
+- A deletion target that disappears while it is being checked now counts as already gone instead
+  of being reported as an error, and one swapped for a symlink while it is being checked is
+  refused instead of deleting what the link points to: its real path must name the same file
+  (device and inode) the check saw.
 - A `SUDO_USER` of `.` or `..` is no longer taken as a user name: it no longer adds `/Users` or
   `/` to the protected homes, and the Homebrew and Xcode commands refuse it instead of running
   `sudo -u ..`. The user name check moved out of the module that runs shell commands, so tests

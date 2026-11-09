@@ -29,6 +29,14 @@ export async function canWriteDir(dir: string): Promise<boolean> {
   }
 }
 
+export async function ownerUid(p: string): Promise<number | undefined> {
+  try {
+    return (await fs.lstat(p)).uid;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function isDirectory(p: string): Promise<boolean> {
   try {
     const st = await fs.lstat(p);

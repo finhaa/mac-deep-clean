@@ -211,6 +211,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/Library/LaunchAgents` or `/Library/LaunchDaemons`, the system logs, the system Diagnostic
   Reports and the system music libraries are listed only when the process can write the folder the
   delete happens in. A run under sudo still lists them.
+- A run without sudo lists only the `/Library/Caches` entries the user owns. The folder is sticky,
+  so a root-owned entry was offered and its delete failed with a permission error. A run under sudo
+  still lists every entry.
 
 ### Safety
 

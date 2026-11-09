@@ -61,6 +61,7 @@ vi.mock('../utils/exec.js', () => ({
 
 import { getAllScanners } from './index.js';
 import { OWNED_BY_OTHER_SCANNERS } from './logs.js';
+import { TempFilesScanner } from './temp-files.js';
 
 // These need the output of an external command, or a project found by `find`, which this world does not give them.
 const EMPTY_IN_THIS_WORLD = [
@@ -110,6 +111,8 @@ async function scanAll() {
   fs.mkdirSync(HOME, { recursive: true });
   const results: Array<{ scanner: string; path: string; irreversible: boolean }> = [];
   for (const scanner of getAllScanners()) {
+    // The temp dir holds this HOME, so trusting it, as macOS does a /var/folders one, would nest every item in it.
+    if (scanner instanceof TempFilesScanner) scanner.trustedTempRoot = /(?!)/;
     for (const r of await scanner.scan({ deep: true })) {
       results.push({
         scanner: scanner.category,

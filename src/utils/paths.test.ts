@@ -384,6 +384,7 @@ describe('a home that does not exist', () => {
     try {
       vi.resetModules();
       vi.stubEnv('HOME', '/mdc-missing/home');
+      vi.stubEnv('SUDO_USER', undefined);
       vi.spyOn(os, 'userInfo').mockReturnValue({
         homedir: '/mdc-missing/home',
       } as os.UserInfo<string>);

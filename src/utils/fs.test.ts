@@ -30,10 +30,16 @@ describe('getSize with a hostile directory name', () => {
     const dir = path.join(root, 'it\'s "x" $(touch pwned) `touch pwned2`');
     await fsp.mkdir(dir);
     await fsp.writeFile(path.join(dir, 'f'), Buffer.alloc(8192));
-    expect(await getSize(dir)).toBeGreaterThanOrEqual(8192);
-    // an injected `touch` runs in the current directory, not in the measured one
-    expect(await pathExists(path.join(process.cwd(), 'pwned'))).toBe(false);
-    expect(await pathExists(path.join(process.cwd(), 'pwned2'))).toBe(false);
+    // an injected `touch` runs in the current directory, so it is one this test made and knows is empty
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      expect(await getSize(dir)).toBeGreaterThanOrEqual(8192);
+    } finally {
+      process.chdir(cwd);
+    }
+    expect(await pathExists(path.join(root, 'pwned'))).toBe(false);
+    expect(await pathExists(path.join(root, 'pwned2'))).toBe(false);
   });
 });
 

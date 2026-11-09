@@ -125,8 +125,13 @@ describe('purgeCommand options', () => {
   });
 
   it('uses --path as the search roots', async () => {
-    await purgeCommand({ yes: true, dryRun: true, path: [os.tmpdir()] });
-    expect(state.scanners[0]?.searchRoots).toEqual([await fsp.realpath(os.tmpdir())]);
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'mdc-purge-root-'));
+    try {
+      await purgeCommand({ yes: true, dryRun: true, path: [dir] });
+      expect(state.scanners[0]?.searchRoots).toEqual([await fsp.realpath(dir)]);
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('walks the real folder behind a --path with a symlinked parent', async () => {

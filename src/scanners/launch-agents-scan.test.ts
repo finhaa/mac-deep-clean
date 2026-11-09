@@ -143,7 +143,10 @@ describe('LaunchAgentsScanner.clean', () => {
     const [item] = await ours();
     if (!item) throw new Error('expected an orphan');
 
-    const { freed, errors } = await new LaunchAgentsScanner().clean([item], false);
+    vi.stubEnv('SUDO_UID', undefined);
+    const { freed, errors } = await new LaunchAgentsScanner().clean([item], false).finally(() => {
+      vi.unstubAllEnvs();
+    });
 
     expect(errors).toEqual([]);
     expect(freed).toBe(item.size);

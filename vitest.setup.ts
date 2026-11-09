@@ -22,14 +22,18 @@ for (const root of tmpRoots) {
 }
 
 // A folder as the kernel resolves it. A missing folder is appended to its nearest existing ancestor, which is
-// resolved natively, never lexically: `link/missing/..` and `link/missing/x` lie wherever `link` points, and
-// a recursive mkdir or cp creates `missing` there.
+// resolved natively, never lexically: `link/missing/x` lies wherever `link` points, and a recursive mkdir or cp
+// creates `missing` there. A `..` after a missing folder is refused: joining it as a string would step back
+// into a folder that exists and skip the symlinks the kernel follows from there.
 function kernelDir(dir: string): string {
   try {
     return fs.realpathSync.native(dir);
   } catch {}
   const up = path.dirname(dir);
   if (up === dir) return path.resolve(dir);
+  if (path.basename(dir) === '..') {
+    throw new Error(`test guard: refusing ${dir}, a .. after a missing folder cannot be resolved`);
+  }
   return path.join(kernelDir(up), path.basename(dir));
 }
 
@@ -55,14 +59,15 @@ function kernelPath(raw: string, followLeaf: boolean, hops = 0): string {
 }
 
 // A string, a Buffer, any other byte array or a file: URL names a path; a file descriptor or a FileHandle does not.
+// Node takes any object with an `href` that fileURLToPath accepts as a URL, not only a URL instance.
 // The guard covers only the calls in `guarded` below. Not guarded: the calls on a file descriptor or FileHandle
 // (fchmod, fchown, futimes, ftruncate, write, writev; a descriptor opened for writing went through the guarded
 // open, but fchmod, fchown and futimes also work on one opened for reading) and child processes. The checks run
-// before the call, so a second hard link made between the check and the write is not caught.
+// before the call, so a symlink or hard link made between the check and the call is not caught.
 function pathOf(arg: unknown): string | undefined {
-  if (arg instanceof URL) return fileURLToPath(arg);
   if (ArrayBuffer.isView(arg))
     return Buffer.from(arg.buffer, arg.byteOffset, arg.byteLength).toString();
+  if (typeof arg === 'object' && arg !== null && 'href' in arg) return fileURLToPath(arg as URL);
   return typeof arg === 'string' ? arg : undefined;
 }
 
@@ -70,6 +75,7 @@ type Rule = {
   positions: number[];
   follow: boolean;
   inode?: boolean;
+  tree?: boolean;
   when?: (args: unknown[]) => boolean;
 };
 
@@ -84,7 +90,26 @@ function hardLinks(real: string): number {
   }
 }
 
-function assertInsideTmp(arg: unknown, { follow, inode }: Rule): void {
+// From Node 22 cpSync copies a folder in native code, past the guarded calls, and writes through every symlink
+// and hard-linked file it meets in the destination.
+function linkInside(dir: string): string | undefined {
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return undefined;
+  }
+  for (const name of names) {
+    const entry = path.join(dir, name);
+    const stat = fs.lstatSync(entry);
+    if (stat.isSymbolicLink() || (!stat.isDirectory() && stat.nlink > 1)) return entry;
+    const found = stat.isDirectory() ? linkInside(entry) : undefined;
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function assertInsideTmp(arg: unknown, { follow, inode, tree }: Rule): void {
   const raw = pathOf(arg);
   if (raw === undefined) return;
   const real = kernelPath(raw, follow);
@@ -96,6 +121,12 @@ function assertInsideTmp(arg: unknown, { follow, inode }: Rule): void {
   if (inode && hardLinks(real) > 1) {
     throw new Error(
       `test guard: refusing to change ${real}, another hard link to it may lie outside ${tmpRoots[0]}`,
+    );
+  }
+  const link = tree ? linkInside(real) : undefined;
+  if (link) {
+    throw new Error(
+      `test guard: refusing to copy into ${real}, ${link} in it may lead outside ${tmpRoots[0]}`,
     );
   }
 }
@@ -110,14 +141,15 @@ type Fn = (...args: unknown[]) => unknown;
 
 // Argument positions that name a path the call deletes, moves, creates or changes. `follow` marks the calls
 // that act on what a symlink there points to; the rest act on the link itself. `inode` marks the calls that
-// change the file itself, which every hard link to it shares. `when` limits a rule to some calls.
+// change the file itself, which every hard link to it shares. `tree` marks a call that writes into a folder there
+// and everything in it. `when` limits a rule to some calls.
 const guarded: Record<string, Rule> = {
   rm: { positions: [0], follow: false },
   rmdir: { positions: [0], follow: false },
   unlink: { positions: [0], follow: false },
   rename: { positions: [0, 1], follow: false },
   truncate: { positions: [0], follow: true, inode: true },
-  cp: { positions: [1], follow: true, inode: true },
+  cp: { positions: [1], follow: true, inode: true, tree: true },
   copyFile: { positions: [1], follow: true, inode: true },
   writeFile: { positions: [0], follow: true, inode: true },
   appendFile: { positions: [0], follow: true, inode: true },

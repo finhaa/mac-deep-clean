@@ -145,6 +145,21 @@ describe('vitest.setup.ts delete guard', () => {
       expect(() => fs.rmSync(url, { force: true })).toThrow(/test guard/);
     });
 
+    // Node takes any object shaped like a URL, not only a URL instance.
+    it('refuses a plain object shaped like a file: URL outside the temp dir', async () => {
+      const target = '/usr/bin/mdc-never-here';
+      const like = { href: `file://${target}`, protocol: 'file:', hostname: '', pathname: target };
+      const asUrl = (obj: object) => obj as URL;
+      await expect(fsp.rm(asUrl(like), { force: true })).rejects.toThrow(/test guard/);
+      expect(() => fs.rmSync(asUrl(like), { force: true })).toThrow(/test guard/);
+      expect(() => fs.writeFileSync(asUrl(like), 'x')).toThrow(/test guard/);
+      const dir = await tempDir();
+      const file = path.join(dir, 'f');
+      await fsp.writeFile(file, 'x');
+      await fsp.rm(asUrl({ ...like, href: `file://${file}`, pathname: file }));
+      await expect(fsp.stat(file)).rejects.toThrow();
+    });
+
     it('still accepts a file: URL inside the temp dir', async () => {
       const dir = await tempDir();
       const file = path.join(dir, 'f');
@@ -360,6 +375,63 @@ describe('vitest.setup.ts delete guard', () => {
       await expect(
         fsp.rm(path.join(link, 'mdc-no-such-dir', 'x'), { force: true }),
       ).rejects.toThrow(/test guard/);
+    });
+
+    // The string is built by hand: path.join would collapse `missing/..` before the guard sees it.
+    it('refuses a recursive create whose `..` after a missing folder leads into a symlink out', async () => {
+      const dir = await tempDir();
+      await fsp.symlink('/usr/bin', path.join(dir, 'link'));
+      const src = path.join(dir, 'src');
+      await fsp.writeFile(src, 'x');
+      const climbing = `${dir}/mdc-missing/../link/mdc-never-here`;
+      await expect(fsp.mkdir(climbing, { recursive: true })).rejects.toThrow(/test guard/);
+      expect(() => fs.mkdirSync(climbing, { recursive: true })).toThrow(/test guard/);
+      expect(() => fs.mkdir(climbing, { recursive: true }, () => {})).toThrow(/test guard/);
+      await expect(fsp.cp(src, climbing)).rejects.toThrow(/test guard/);
+      expect(() => fs.cpSync(src, climbing)).toThrow(/test guard/);
+      await expect(fsp.stat(path.join(dir, 'mdc-missing'))).rejects.toThrow(/ENOENT/);
+    });
+
+    it('still creates a folder whose `..` follows a folder that exists', async () => {
+      const dir = await tempDir();
+      await fsp.mkdir(path.join(dir, 'a'));
+      await fsp.mkdir(`${dir}/a/../b/c`, { recursive: true });
+      await expect(fsp.stat(path.join(dir, 'b', 'c'))).resolves.toBeDefined();
+    });
+
+    // From Node 22 cpSync copies a folder in native code, past the guarded calls, and writes through what it finds.
+    it('refuses a recursive cp into a folder that holds a symlink or a hard-linked file', async () => {
+      const dir = await tempDir();
+      const src = path.join(dir, 'src');
+      await fsp.mkdir(path.join(src, 'sub'), { recursive: true });
+      await fsp.writeFile(path.join(src, 'sub', 'a'), 'new');
+      const linked = path.join(dir, 'linked');
+      await fsp.mkdir(path.join(linked, 'sub'), { recursive: true });
+      await fsp.symlink('/usr/bin/mdc-never-here', path.join(linked, 'sub', 'a'));
+      await expect(fsp.cp(src, linked, { recursive: true })).rejects.toThrow(/test guard/);
+      expect(() => fs.cpSync(src, linked, { recursive: true })).toThrow(/test guard/);
+      expect(() => fs.cp(src, linked, { recursive: true }, () => {})).toThrow(/test guard/);
+      const twinned = path.join(dir, 'twinned');
+      await fsp.mkdir(path.join(twinned, 'sub'), { recursive: true });
+      await fsp.writeFile(path.join(twinned, 'sub', 'a'), 'old');
+      await fsp.link(path.join(twinned, 'sub', 'a'), path.join(dir, 'twin'));
+      expect(() => fs.cpSync(src, twinned, { recursive: true })).toThrow(/test guard/);
+      expect((await fsp.readFile(path.join(dir, 'twin'))).toString()).toBe('old');
+    });
+
+    it('still copies a folder into a new folder or over one that holds only plain files', async () => {
+      const dir = await tempDir();
+      const src = path.join(dir, 'src');
+      await fsp.mkdir(path.join(src, 'sub'), { recursive: true });
+      await fsp.writeFile(path.join(src, 'sub', 'a'), 'new');
+      await fsp.symlink('/usr/bin', path.join(src, 'outward'));
+      await fsp.cp(src, path.join(dir, 'fresh'), { recursive: true });
+      const plain = path.join(dir, 'plain');
+      await fsp.mkdir(path.join(plain, 'sub'), { recursive: true });
+      await fsp.writeFile(path.join(plain, 'sub', 'a'), 'old');
+      fs.cpSync(src, plain, { recursive: true });
+      expect((await fsp.readFile(path.join(dir, 'fresh', 'sub', 'a'))).toString()).toBe('new');
+      expect((await fsp.readFile(path.join(plain, 'sub', 'a'))).toString()).toBe('new');
     });
 
     it('refuses a symlink whose target climbs out through another symlink', async () => {

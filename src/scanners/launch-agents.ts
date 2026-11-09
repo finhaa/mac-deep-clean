@@ -93,17 +93,18 @@ export async function programResolves(
   return false;
 }
 
-// A disk that is gone can leave its symlink in /Volumes, which lstat still finds: the volume must resolve.
+// A disk that is gone can leave its symlink in /Volumes, which lstat still finds, or an empty folder after an
+// unclean eject, which stat finds too: only a mount point sits on another device than the folder holding it.
 export async function volumeReachable(volume: string): Promise<boolean> {
-  return fs.stat(volume).then(
-    () => true,
-    () => false,
-  );
+  const mount = await fs.stat(volume).catch(() => null);
+  const parent = await fs.stat(path.dirname(volume)).catch(() => null);
+  return mount !== null && parent !== null && mount.dev !== parent.dev;
 }
 
 // The path as the kernel resolves it: the nearest ancestor that exists, resolved, plus the missing rest.
 // A symlink an unmounted disk left behind is found by lstat but does not resolve, and a folder we may not
-// enter does not resolve either: null, since neither says the program is gone.
+// enter does not resolve either: null, since neither says the program is gone. A `..` in the missing rest
+// would only be resolved by spelling, which can climb out of a volume: null too.
 async function resolveProgramPath(p: string): Promise<string | null> {
   let current = p;
   const rest: string[] = [];
@@ -118,6 +119,7 @@ async function resolveProgramPath(p: string): Promise<string | null> {
       current = parent;
       continue;
     }
+    if (rest.includes('..')) return null;
     const real = await fs.realpath(current).catch(() => null);
     return real && path.join(real, ...rest);
   }

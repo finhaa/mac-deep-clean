@@ -180,6 +180,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added tests for the orphaned LaunchAgents, System Caches, Trash and Temp
   Files scans, the project-artifacts worktree and project-file filters, and
   the git tmp_pack protected-path guard.
+- An empty folder an unclean eject leaves in `/Volumes` no longer counts as a mounted disk:
+  Orphaned LaunchAgents take a volume as mounted only when it sits on another device than
+  the folder holding it, so an agent whose program was on that disk is kept.
+- Orphaned LaunchAgents no longer judge a program whose path has `..` after the first folder
+  that does not exist, since that part could climb out of a volume: the agent is kept.
+- Added tests that pin the 10 minute age line of `git-tmp-packs` at the millisecond, for both
+  the scan and the clean.
 
 ### Safety
 

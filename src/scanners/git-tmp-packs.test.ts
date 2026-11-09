@@ -355,6 +355,71 @@ describe('GitTmpPacksScanner.clean safety guard', () => {
   });
 });
 
+describe('GitTmpPacksScanner age line, to the millisecond', () => {
+  const AGE_LINE_MS = 10 * MINUTE_MS;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function packTouchedAt(name: string): Promise<{ file: string; touchedMs: number }> {
+    const file = await writeAged(packFile('repo', name), 60);
+    const when = new Date('2026-01-01T00:00:00Z');
+    await fs.utimes(file, when, when);
+    const touchedMs = (await fs.lstat(file)).mtimeMs;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    return { file, touchedMs };
+  }
+
+  it('scan lists a pack from exactly 10 minutes after its last write, not a millisecond sooner', async () => {
+    const { file, touchedMs } = await packTouchedAt('tmp_pack_line');
+    const s = scanner();
+
+    vi.setSystemTime(touchedMs + AGE_LINE_MS - 1);
+    expect(await s.scan()).toEqual([]);
+    vi.setSystemTime(touchedMs + AGE_LINE_MS);
+    expect((await s.scan()).map((r) => r.path)).toEqual([file]);
+    vi.setSystemTime(touchedMs + AGE_LINE_MS + 1);
+    expect((await s.scan()).map((r) => r.path)).toEqual([file]);
+  });
+
+  it('clean keeps a pack a millisecond short of 10 minutes and deletes one at exactly 10', async () => {
+    const { file, touchedMs } = await packTouchedAt('tmp_pack_line');
+    const size = (await fs.lstat(file)).size;
+    const item = {
+      path: file,
+      size,
+      label: 'x',
+      category: 'git-tmp-packs',
+      risk: 'moderate' as const,
+    };
+
+    vi.setSystemTime(touchedMs + AGE_LINE_MS - 1);
+    expect(await scanner().clean([item], false)).toEqual({ freed: 0, errors: [] });
+    await expect(fs.stat(file)).resolves.toBeDefined();
+
+    vi.setSystemTime(touchedMs + AGE_LINE_MS);
+    expect(await scanner().clean([item], false)).toEqual({ freed: size, errors: [] });
+    await expect(fs.stat(file)).rejects.toThrow();
+  });
+
+  it('clean deletes a pack a millisecond past 10 minutes', async () => {
+    const { file, touchedMs } = await packTouchedAt('tmp_pack_past');
+    const size = (await fs.lstat(file)).size;
+    const item = {
+      path: file,
+      size,
+      label: 'x',
+      category: 'git-tmp-packs',
+      risk: 'moderate' as const,
+    };
+
+    vi.setSystemTime(touchedMs + AGE_LINE_MS + 1);
+    expect(await scanner().clean([item], false)).toEqual({ freed: size, errors: [] });
+    await expect(fs.stat(file)).rejects.toThrow();
+  });
+});
+
 describe('registration', () => {
   it('is part of getAllScanners with the git-tmp-packs category', () => {
     expect(getAllScanners().some((s) => s.category === 'git-tmp-packs')).toBe(true);

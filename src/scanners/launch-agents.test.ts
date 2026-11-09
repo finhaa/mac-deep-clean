@@ -1,7 +1,8 @@
+import type { PathLike } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   canJudgeProgram,
   mountPointOf,
@@ -172,13 +173,89 @@ describe('volumeReachable', () => {
   it('follows a symlink, so one left behind by an unmounted disk is not reachable', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-volume-'));
     try {
-      await fs.mkdir(path.join(dir, 'Work'));
-      await fs.symlink(path.join(dir, 'Work'), path.join(dir, 'Alias'));
       await fs.symlink(path.join(dir, 'Gone'), path.join(dir, 'Dangling'));
-      expect(await volumeReachable(path.join(dir, 'Work'))).toBe(true);
-      expect(await volumeReachable(path.join(dir, 'Alias'))).toBe(true);
       expect(await volumeReachable(path.join(dir, 'Dangling'))).toBe(false);
       expect(await volumeReachable(path.join(dir, 'Missing'))).toBe(false);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not take a folder an unclean eject left behind, on its parent device, for a mounted disk', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-volume-'));
+    try {
+      await fs.mkdir(path.join(dir, 'Stale'));
+      await fs.symlink(path.join(dir, 'Stale'), path.join(dir, 'Alias'));
+      expect(await volumeReachable(path.join(dir, 'Stale'))).toBe(false);
+      expect(await volumeReachable(path.join(dir, 'Alias'))).toBe(false);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('takes a mount point, on a device of its own, for a mounted disk', async () => {
+    expect(await volumeReachable('/dev')).toBe(true);
+  });
+});
+
+describe('canJudgeProgram on a /Volumes folder, by its device', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function volumeOnDevice(dev: number | null, parentDev: number | null = 1): void {
+    const stat = fs.stat;
+    const missing = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    vi.spyOn(fs, 'stat').mockImplementation((async (p: PathLike) => {
+      if (p === '/Volumes') {
+        if (parentDev === null) throw missing();
+        return { dev: parentDev };
+      }
+      if (p !== '/Volumes/mdc-disk') return stat(p);
+      if (dev === null) throw missing();
+      return { dev };
+    }) as typeof fs.stat);
+  }
+
+  it('cannot judge a program in a leftover folder on the same device as /Volumes', async () => {
+    volumeOnDevice(1);
+    expect(await canJudgeProgram('/Volumes/mdc-disk/bin/x')).toBe(false);
+  });
+
+  it('judges a program on a mounted disk, whose device differs from /Volumes', async () => {
+    volumeOnDevice(2);
+    expect(await canJudgeProgram('/Volumes/mdc-disk/bin/x')).toBe(true);
+  });
+
+  it('cannot judge a program on a disk that is not there at all', async () => {
+    volumeOnDevice(null);
+    expect(await canJudgeProgram('/Volumes/mdc-disk/bin/x')).toBe(false);
+  });
+
+  it('cannot judge a program when the folder holding the disk cannot be read', async () => {
+    volumeOnDevice(2, null);
+    expect(await canJudgeProgram('/Volumes/mdc-disk/bin/x')).toBe(false);
+  });
+});
+
+describe('canJudgeProgram with .. in the part of the path that does not exist', () => {
+  it('cannot judge a program whose missing part climbs out of a volume with ..', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+    try {
+      expect(await canJudgeProgram(`/Volumes/mdc-gone/../..${dir}/x`, async () => false)).toBe(
+        false,
+      );
+      expect(await canJudgeProgram(`${dir}/missing/../x`, async () => false)).toBe(false);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('judges a program whose .. sits in the part that exists, which the kernel resolves', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mdc-judge-'));
+    try {
+      await fs.mkdir(path.join(dir, 'Real'));
+      expect(await canJudgeProgram(`${dir}/Real/../Real/bin/x`, async () => false)).toBe(true);
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }

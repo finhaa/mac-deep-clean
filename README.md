@@ -63,8 +63,9 @@ mac-deep-clean duplicates ~/Downloads --min-size 5MB
   irreversible items. `.venv` and `venv` folders are never picked by `--yes`, not even with
   `--category project-artifacts`.
 
-Irreversible items cannot be undone. They run only when you name their category, as in
-`clean --category time-machine --yes`, which then picks every item of it:
+Irreversible items cannot be undone. In the interactive list they are not marked and none of them
+starts ticked, so one is cleaned only if you tick it. `--yes` picks them only when you name their
+category, as in `clean --category time-machine --yes`, which then picks every item of it:
 
 - `time-machine`: local Time Machine snapshots
 - `apfs-snapshots`: APFS snapshots
@@ -146,7 +147,8 @@ sizes should match `sudo du` reports.
 ### --deep mode (Electron apps)
 
 By default, the Electron scanner only reports _regenerable cache subdirs_
-(`Cache`, `Code Cache`, `GPUCache`, `blob_storage`, `Service Worker`, `logs`).
+(`Cache`, `CachedData`, `CachedExtensionVSIXs`, `Code Cache`, `GPUCache`,
+`Service Worker/CacheStorage`, `blob_storage`, `logs`).
 Non-cache data — IndexedDB, Local Storage, `workspaceStorage`, history,
 sessions — is excluded because deleting it **loses conversations, workspaces,
 and extension state**.
@@ -170,9 +172,9 @@ never listed. Review carefully; export anything you care about before cleaning.
 | Screen Recording      | `screen-recording`   | moderate |
 | Docker                | `docker`             | risky    |
 | Android SDK           | `android`            | moderate |
-| iOS Simulators        | `ios-simulators`     | safe     |
+| iOS Simulators & Xcode | `ios-simulators`    | safe     |
 | iOS Device Backups    | `ios-backups`        | moderate |
-| Time Machine          | `time-machine`       | moderate |
+| Time Machine Local Snapshots | `time-machine` | moderate |
 | APFS Snapshots        | `apfs-snapshots`     | moderate |
 | Music Creation        | `music-creation`     | moderate |
 | Browser Caches        | `browser-cache`      | safe     |
@@ -182,7 +184,7 @@ never listed. Review carefully; export anything you care about before cleaning.
 | Spotify               | `spotify`            | safe     |
 | Mail Downloads        | `mail-downloads`     | moderate |
 | Diagnostic Reports    | `diagnostic-reports` | safe     |
-| Saved App State       | `saved-app-state`    | safe     |
+| Saved Application State | `saved-app-state`  | safe     |
 | Temp Files            | `temp-files`         | moderate |
 | Trash                 | `trash`              | moderate |
 | Orphaned LaunchAgents | `launch-agents`      | moderate |

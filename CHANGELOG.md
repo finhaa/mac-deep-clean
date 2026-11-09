@@ -192,6 +192,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that does not exist, since that part could climb out of a volume: the agent is kept.
 - Added tests that pin the 10 minute age line of `git-tmp-packs` at the millisecond, for both
   the scan and the clean.
+- The README no longer says irreversible items run only when you name their category: the
+  interactive list offers them unmarked and unticked, and only `--yes` needs the category. It now
+  names every Electron cache folder the scanner removes (`CachedData`, `CachedExtensionVSIXs` and
+  `Service Worker/CacheStorage`, not all of `Service Worker`) and each scanner by its own name.
+  Tests pin these lists, the purge folders, the Electron apps and the protected paths it names
+  against the code, and that no scanner flags a safe item irreversible.
 
 ### Safety
 

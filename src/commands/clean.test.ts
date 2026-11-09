@@ -447,7 +447,7 @@ describe('cleanCommand --deep banner', () => {
   > = {
     'leaves Electron out': (s) => !s.scanned,
     'stay hidden': (s) => s.scanned && s.offered !== true && !s.cleaned,
-    'skips Electron app state': (s) => s.scanned && !s.cleaned,
+    'skips Electron app state': (s) => s.scanned && s.offered === undefined && !s.cleaned,
     'picks every Electron app state folder': (s) => s.cleaned,
     'will appear': (s) => s.offered === true && s.ticked === false,
   };

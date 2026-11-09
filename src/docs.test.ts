@@ -3,6 +3,7 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { getAllScanners } from './scanners/index.js';
 import { stripControl } from './utils/format.js';
+import { expandHome, isProtectedPath } from './utils/paths.js';
 
 const read = (name: string) => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 
@@ -17,32 +18,73 @@ function walk(node: ts.Node, visit: (node: ts.Node) => void): void {
 
 const isNamed = (name: ts.Node, text: string) => ts.isIdentifier(name) && name.text === text;
 
+const literalText = (node: ts.Node | undefined) => {
+  const inner = node && ts.isAsExpression(node) ? node.expression : node;
+  return inner && ts.isStringLiteral(inner) ? inner.text : undefined;
+};
+
+const property = (node: ts.ObjectLiteralExpression, name: string) =>
+  node.properties.find(
+    (p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && isNamed(p.name, name),
+  );
+
+const scannerSources = () =>
+  readdirSync(new URL('./scanners/', import.meta.url)).filter(
+    (file) => file.endsWith('.ts') && !file.endsWith('.test.ts'),
+  );
+
 // Read from the scanner sources, so a flag added or removed anywhere changes the expected list.
-function irreversibleCategories(): string[] {
-  const found: string[] = [];
-  for (const file of readdirSync(new URL('./scanners/', import.meta.url))) {
-    if (!file.endsWith('.ts') || file.endsWith('.test.ts')) continue;
-    let category: string | undefined;
-    let flags = false;
+function irreversibleItems(): Array<{ category: string | undefined; risk: string | undefined }> {
+  const found: Array<{ category: string | undefined; risk: string | undefined }> = [];
+  for (const file of scannerSources()) {
+    const fields = new Map<string, string | undefined>();
+    const flagged: ts.ObjectLiteralExpression[] = [];
     walk(parse(`src/scanners/${file}`), (node) => {
-      if (
-        ts.isPropertyDeclaration(node) &&
-        isNamed(node.name, 'category') &&
-        node.initializer &&
-        ts.isStringLiteral(node.initializer)
-      )
-        category = node.initializer.text;
-      if (
-        ts.isPropertyAssignment(node) &&
-        isNamed(node.name, 'irreversible') &&
-        node.initializer.kind !== ts.SyntaxKind.FalseKeyword
-      )
-        flags = true;
+      if (ts.isPropertyDeclaration(node) && ts.isIdentifier(node.name))
+        fields.set(node.name.text, literalText(node.initializer));
+      if (!ts.isObjectLiteralExpression(node)) return;
+      const flag = property(node, 'irreversible');
+      if (flag && flag.initializer.kind !== ts.SyntaxKind.FalseKeyword) flagged.push(node);
     });
-    if (flags && category) found.push(category);
+    for (const item of flagged) {
+      const risk = property(item, 'risk')?.initializer;
+      const ownRisk =
+        risk &&
+        ts.isPropertyAccessExpression(risk) &&
+        risk.expression.kind === ts.SyntaxKind.ThisKeyword
+          ? fields.get(risk.name.text)
+          : literalText(risk);
+      found.push({ category: fields.get('category'), risk: ownRisk });
+    }
   }
-  return found.sort();
+  return found;
 }
+
+const irreversibleCategories = () =>
+  [...new Set(irreversibleItems().map((item) => item.category ?? ''))].sort();
+
+function constantStrings(file: string, name: string): string[] {
+  const found: string[] = [];
+  walk(parse(file), (node) => {
+    if (!ts.isVariableDeclaration(node) || !isNamed(node.name, name) || !node.initializer) return;
+    if (ts.isArrayLiteralExpression(node.initializer))
+      for (const element of node.initializer.elements) found.push(literalText(element) ?? '');
+    if (ts.isObjectLiteralExpression(node.initializer))
+      for (const p of node.initializer.properties)
+        found.push(
+          p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : '',
+        );
+  });
+  return found;
+}
+
+const backticked = (text: string) => [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1] ?? '');
+
+const between = (text: string, from: string, to: string) => {
+  const start = text.indexOf(from);
+  const end = text.indexOf(to, start + from.length);
+  return start < 0 || end < 0 ? '' : text.slice(start + from.length, end);
+};
 
 const section = (text: string, heading: string) => {
   const start = text.indexOf(heading);
@@ -59,6 +101,58 @@ describe('README', () => {
       .map((s) => s.category)
       .filter((category) => !readme.includes(`| \`${category}\``));
     expect(missing).toEqual([]);
+  });
+
+  it('gives each scanner its own name and risk in the table, and lists no other', () => {
+    const rows = read('README.md')
+      .split('\n')
+      .map((line) => /^\| (.+?) +\| `([a-z-]+)` +\| (\w+) +\|$/.exec(line))
+      .filter((m) => m !== null)
+      .map((m) => `${m[1]} ${m[2]} ${m[3]}`);
+    expect(rows.length).toBe(getAllScanners().length);
+    expect(rows.sort()).toEqual(
+      getAllScanners()
+        .map((s) => `${s.name} ${s.category} ${s.risk}`)
+        .sort(),
+    );
+  });
+
+  it('lists exactly the Electron cache subdirs the scanner removes without --deep', () => {
+    const subdirs = constantStrings('src/scanners/electron-apps.ts', 'CACHE_SUBDIRS');
+    expect(subdirs.length).toBeGreaterThan(0);
+    const listed = backticked(
+      between(read('README.md').replace(/\s+/g, ' '), '_regenerable cache subdirs_', ').'),
+    );
+    expect(listed.sort()).toEqual([...subdirs].sort());
+  });
+
+  it('names only Electron apps the scanner knows', () => {
+    const apps = constantStrings('src/scanners/electron-apps.ts', 'ELECTRON_APPS');
+    expect(apps.length).toBeGreaterThan(0);
+    const named = between(read('README.md'), '- Electron app caches (', ')')
+      .split(', ')
+      .map((name) => name.replace('…', ''));
+    expect(named.length).toBeGreaterThan(1);
+    expect(named.filter((name) => !apps.includes(name))).toEqual([]);
+  });
+
+  it('names only artifact folders that purge really looks for, in the README and the changelog', () => {
+    const artifacts = constantStrings('src/scanners/project-artifacts.ts', 'ARTIFACT_DIRS');
+    expect(artifacts.length).toBeGreaterThan(0);
+    const flat = (name: string) => read(name).replace(/\s+/g, ' ');
+    for (const named of [
+      backticked(between(flat('README.md'), 'etc. and finds', 'and friends')),
+      backticked(between(flat('CHANGELOG.md'), 'removes build artifact dirs', 'Dedupes')),
+    ]) {
+      expect(named.length).toBeGreaterThan(3);
+      expect(named.filter((name) => !artifacts.includes(name))).toEqual([]);
+    }
+  });
+
+  it('names only protected paths in its safety list', () => {
+    const named = backticked(between(read('README.md'), '- Protected paths (', '…)'));
+    expect(named.length).toBeGreaterThan(3);
+    expect(named.filter((p) => !isProtectedPath(expandHome(p)))).toEqual([]);
   });
 });
 
@@ -107,8 +201,28 @@ describe('README irreversible list', () => {
 
   it('says --yes --risky leaves the irreversible items out and that their category picks them', () => {
     expect(readme()).toContain('adds the moderate and risky ones except the irreversible items');
-    expect(readme()).toContain('They run only when you name their category');
+    expect(readme()).toContain('`--yes` picks them only when you name their category');
     expect(readme()).not.toMatch(/adds every item/i);
+  });
+
+  it('says the interactive list offers them unticked, not that only their category runs them', () => {
+    expect(readme()).toContain(
+      'In the interactive list they are not marked and none of them starts ticked, so one is cleaned only if you tick it',
+    );
+    expect(readme()).not.toMatch(/irreversible items[^.]*\. They (run|are cleaned) only when/i);
+  });
+
+  // The picker ticks exactly the safe items (commands/clean.ts), so the promise above needs
+  // every irreversible item to be moderate or risky.
+  it('never flags a safe item irreversible, so the picker never pre-ticks one', () => {
+    const items = irreversibleItems();
+    const flags = scannerSources().reduce(
+      (n, file) => n + (read(`src/scanners/${file}`).match(/\birreversible:/g) ?? []).length,
+      0,
+    );
+    expect(flags).toBeGreaterThan(0);
+    expect(items.length).toBe(flags);
+    expect(items.filter((item) => item.risk !== 'moderate' && item.risk !== 'risky')).toEqual([]);
   });
 });
 
@@ -116,7 +230,7 @@ describe('Electron state gate wording', () => {
   it('names Electron state only beside --deep in the README usage lines', () => {
     const lines = read('README.md')
       .split('\n')
-      .filter((line) => line.startsWith('mac-deep-clean ') && /Electron/.test(line));
+      .filter((line) => line.startsWith('mac-deep-clean ') && /electron/i.test(line));
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.filter((line) => !line.includes('--deep'))).toEqual([]);
   });
@@ -131,8 +245,9 @@ describe('Electron state gate wording', () => {
         options.push({ flags: flags.text, help: help.text });
     });
     expect(options.length).toBeGreaterThan(0);
+    expect(options.length).toBe(read('src/index.ts').match(/\.option\(/g)?.length);
     const stray = options.filter(
-      (o) => /Electron/.test(o.help) && !`${o.flags} ${o.help}`.includes('--deep'),
+      (o) => /electron/i.test(o.help) && !`${o.flags} ${o.help}`.includes('--deep'),
     );
     expect(stray).toEqual([]);
   });

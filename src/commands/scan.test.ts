@@ -185,4 +185,15 @@ describe('scanCommand --deep banner', () => {
 
     expect(logged()).toContain('leaves Electron out');
   });
+
+  it('lists the state folders for --category electron and does not say Electron is left out', async () => {
+    const state: ScanResult = { ...item('electron', 'Claude — IndexedDB (state)'), risk: 'risky' };
+    vi.mocked(getAllScanners).mockReturnValue([scanner('electron', 'safe', [state])] as never);
+
+    await scanCommand({ deep: true, category: 'electron' });
+
+    expect(logged()).toContain('Claude — IndexedDB (state)');
+    expect(logged()).toContain('DEEP mode: Electron apps also report their state folders');
+    expect(logged()).not.toContain('leaves Electron out');
+  });
 });

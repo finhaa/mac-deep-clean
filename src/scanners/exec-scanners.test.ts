@@ -17,13 +17,13 @@ vi.mock('../utils/fs.js', async (importOriginal) => {
   return { ...actual, getSize: async (p: string) => h.sizes.get(p) ?? 0 };
 });
 vi.mock('../utils/exec.js', () => ({
-  asInvokingUser: (command: string) => command,
+  asInvokingUser: vi.fn((command: string) => command),
   commandExists: vi.fn(),
   run: vi.fn(),
 }));
 
 import type { ScanResult } from '../types.js';
-import { commandExists, run } from '../utils/exec.js';
+import { asInvokingUser, commandExists, run } from '../utils/exec.js';
 import { DockerScanner } from './docker.js';
 import { HomebrewScanner } from './homebrew.js';
 import { IosSimulatorsScanner } from './ios-simulators.js';
@@ -117,12 +117,49 @@ describe('IosSimulatorsScanner', () => {
 
   it('offers the simulator cleanup only when xcrun exists', async () => {
     await put(devices, 9 * MB);
+    runMock.mockResolvedValue(ok('/usr/bin/simctl'));
     existsMock.mockResolvedValue(false);
     expect(await new IosSimulatorsScanner().scan()).toEqual([]);
     existsMock.mockResolvedValue(true);
     const [result] = await new IosSimulatorsScanner().scan();
     expect(result).toMatchObject({ path: 'xcrun:simctl:unavailable', size: 9 * MB });
     expect(result?.description).toContain('at most');
+  });
+
+  it('offers the simulator cleanup only when xcrun can find simctl, which Command Line Tools lack', async () => {
+    await put(devices, 9 * MB);
+    await put('Library/Developer/Xcode/DerivedData', 3 * MB);
+    existsMock.mockResolvedValue(true);
+    runMock.mockImplementation(async (command) =>
+      command === 'xcode-select -p'
+        ? ok('/Library/Developer/CommandLineTools')
+        : fail('xcrun: error: unable to find utility "simctl"'),
+    );
+    expect((await new IosSimulatorsScanner().scan()).map((r) => path.basename(r.path))).toEqual([
+      'DerivedData',
+    ]);
+    expect(commands()).toEqual(['xcode-select -p', 'xcrun --find simctl']);
+    expect(asInvokingUser).toHaveBeenCalledWith('xcrun --find simctl');
+    runMock.mockReset();
+    runMock.mockResolvedValue(ok('/usr/bin/simctl'));
+    expect((await new IosSimulatorsScanner().scan()).map((r) => path.basename(r.path))).toEqual([
+      'xcrun:simctl:unavailable',
+      'DerivedData',
+    ]);
+  });
+
+  it('never calls xcrun without a developer folder, so a scan cannot raise the tools install dialog', async () => {
+    await put(devices, 9 * MB);
+    await put('Library/Developer/Xcode/DerivedData', 3 * MB);
+    existsMock.mockResolvedValue(true);
+    runMock.mockImplementation(async (command) =>
+      command === 'xcode-select -p' ? fail('unable to get active developer directory') : ok(),
+    );
+    expect((await new IosSimulatorsScanner().scan()).map((r) => path.basename(r.path))).toEqual([
+      'DerivedData',
+    ]);
+    expect(commands()).toEqual(['xcode-select -p']);
+    expect(asInvokingUser).toHaveBeenCalledWith('xcode-select -p');
   });
 
   it('reports DerivedData as safe and Archives as moderate', async () => {
@@ -138,6 +175,7 @@ describe('IosSimulatorsScanner', () => {
 
   it('marks only the Archives irreversible', async () => {
     existsMock.mockResolvedValue(true);
+    runMock.mockResolvedValue(ok('/usr/bin/simctl'));
     await put('Library/Developer/CoreSimulator/Devices', 2 * MB);
     await put('Library/Developer/Xcode/DerivedData', 3 * MB);
     await put('Library/Developer/Xcode/Archives', 4 * MB);
@@ -241,6 +279,7 @@ describe('size floors, pinned at the byte', () => {
     'IosSimulatorsScanner skips an empty %s folder and reports one of a single byte',
     async (name, folder) => {
       existsMock.mockResolvedValue(true);
+      runMock.mockResolvedValue(ok('/usr/bin/simctl'));
       await put(folder, 0);
       expect(await new IosSimulatorsScanner().scan()).toEqual([]);
       await put(folder, 1);

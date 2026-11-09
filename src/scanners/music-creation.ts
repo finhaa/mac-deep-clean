@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { ScanResult } from '../types.js';
-import { getSize, pathExists } from '../utils/fs.js';
+import { canWriteDir, getSize, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -24,7 +24,7 @@ export class MusicCreationScanner extends BaseScanner {
     ];
 
     for (const t of targets) {
-      if (!(await pathExists(t.path))) continue;
+      if (!(await pathExists(t.path)) || !(await canWriteDir(path.dirname(t.path)))) continue;
       const size = await getSize(t.path);
       if (size < 100 * 1024 * 1024) continue;
       results.push({

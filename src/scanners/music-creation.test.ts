@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../utils/fs.js', () => ({
   pathExists: vi.fn(async () => true),
   getSize: vi.fn(async () => 500 * 1024 * 1024),
+  canWriteDir: vi.fn(async () => true),
 }));
 
 import { MusicCreationScanner } from './music-creation.js';

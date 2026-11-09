@@ -5,6 +5,16 @@ import { getSize, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
+// Command Line Tools ship xcrun without simctl, so xcrun alone does not mean the cleanup can run. Without a
+// developer folder /usr/bin/xcrun is a stub that can raise the tools install dialog, so it is not called.
+async function simctlRuns(): Promise<boolean> {
+  if (!(await commandExists('xcrun'))) return false;
+  const developerDir = await run(asInvokingUser('xcode-select -p'), { timeout: 5000 });
+  if (developerDir.code !== 0) return false;
+  const { code } = await run(asInvokingUser('xcrun --find simctl'), { timeout: 10_000 });
+  return code === 0;
+}
+
 export class IosSimulatorsScanner extends BaseScanner {
   readonly name = 'iOS Simulators & Xcode';
   readonly category = 'ios-simulators';
@@ -14,7 +24,7 @@ export class IosSimulatorsScanner extends BaseScanner {
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
 
-    if (await commandExists('xcrun')) {
+    if (await simctlRuns()) {
       const devicesRoot = path.join(HOME, 'Library/Developer/CoreSimulator/Devices');
       if (await pathExists(devicesRoot)) {
         const size = await getSize(devicesRoot);

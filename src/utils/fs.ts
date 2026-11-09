@@ -19,6 +19,16 @@ export async function pathExists(p: string): Promise<boolean> {
   }
 }
 
+// Removing an entry takes write and search permission on the folder that holds it.
+export async function canWriteDir(dir: string): Promise<boolean> {
+  try {
+    await fs.access(dir, fs.constants.W_OK | fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function isDirectory(p: string): Promise<boolean> {
   try {
     const st = await fs.lstat(p);

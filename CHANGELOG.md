@@ -212,8 +212,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Reports and the system music libraries are listed only when the process can write the folder the
   delete happens in. A run under sudo still lists them.
 - A run without sudo lists only the `/Library/Caches` entries the user owns. The folder is sticky,
-  so a root-owned entry was offered and its delete failed with a permission error. A run under sudo
-  still lists every entry.
+  so a root-owned entry was offered and its delete failed with a permission error. An entry the user
+  owns is also skipped when a folder inside it is not writable, or is sticky and holds someone
+  else's files, since that delete would stop partway. A run under sudo still lists every entry.
 
 ### Safety
 

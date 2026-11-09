@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { ScanResult } from '../types.js';
-import { getSize, isDirectory, listDir, ownerUid } from '../utils/fs.js';
+import { canRemoveTree, getSize, isDirectory, listDir, ownerUid } from '../utils/fs.js';
 import { BaseScanner } from './base-scanner.js';
 
 export class SystemCacheScanner extends BaseScanner {
@@ -22,6 +22,7 @@ export class SystemCacheScanner extends BaseScanner {
       if (uid !== 0 && (await ownerUid(target)) !== uid) continue;
       const size = await getSize(target);
       if (size < 50 * 1024 * 1024) continue;
+      if (uid !== 0 && !(await canRemoveTree(target))) continue;
       results.push({
         path: target,
         size,

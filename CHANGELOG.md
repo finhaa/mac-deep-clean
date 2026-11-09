@@ -150,10 +150,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `..` after a missing folder is refused when more of the path follows it. A call that changes a file also
   refuses one in the temp dir with more than one hard link, since another link may lie
   outside it, and `cp` also refuses a destination folder that holds a symlink or a file
-  with more than one hard link at any depth, since from Node 22 it copies a folder past
-  the guarded calls. The temp dir itself is refused
-  when it is `/` or holds the home folder. Not guarded: every call on a file descriptor
-  or FileHandle (`fchmod`, `fchown`, `futimes`, `ftruncate`, `write`, `writev`; one opened
+  with more than one hard link at any depth, or a folder at any depth it cannot read,
+  since from Node 22 it copies a folder past the guarded calls. The temp dir itself is
+  refused when it is `/` or holds the home folder. Not guarded: `readFile` with a write
+  flag, every call on a file descriptor or FileHandle (`fchmod`, `fchown`, `futimes`, `ftruncate`, `write`, `writev`; one opened
   for writing went through the guarded `open`, but `fchmod`, `fchown` and `futimes` also
   work on one opened for reading) and child processes (`rm`, `find -delete`). The checks
   run before the call, so a symlink or hard link made between the check and the call is
@@ -198,6 +198,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Service Worker/CacheStorage`, not all of `Service Worker`) and each scanner by its own name.
   Tests pin these lists, the purge folders, the Electron apps and the protected paths it names
   against the code, and that no scanner flags a safe item irreversible.
+- The README no longer says `--yes` picks only safe items whatever you pass: `--yes --category <name>`
+  picks every item of that category, moderate, risky and irreversible ones too. A test pins the
+  sentence. Test runs also refuse a `cp` into a folder they cannot read, or one holding such a folder,
+  which they used to let through unchecked, run with colour off whatever `FORCE_COLOR` says, and
+  undo every environment stub even when the code under test throws.
 
 ### Safety
 

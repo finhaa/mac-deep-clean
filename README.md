@@ -37,7 +37,7 @@ mac-deep-clean scan --deep        # Also report Electron app state folders (risk
 mac-deep-clean clean              # Interactive cleanup
 mac-deep-clean clean --dry-run    # Preview only, no deletions
 mac-deep-clean clean --risky      # Include risky categories and items (docker, APFS snapshots; Electron state also needs --deep)
-mac-deep-clean clean --yes        # Non-interactive; selects only safe items (add --risky for moderate and risky; see What `clean` picks below); .venv/venv always left to the picker
+mac-deep-clean clean --yes        # Non-interactive; selects only safe items unless you add --risky or --category (see What `clean` picks below); .venv/venv always left to the picker
 mac-deep-clean clean --category docker
 mac-deep-clean doctor             # Full diagnostic with recommendations
 mac-deep-clean purge              # Walk dev roots, delete node_modules/.venv/target/...
@@ -59,8 +59,9 @@ mac-deep-clean duplicates ~/Downloads --min-size 5MB
 - `--category <name>` scans only that category and shows every item of it, risky ones too.
 - `--deep` adds Electron app state folders, which are risky: `clean` lists them only with `--risky` or
   `--category electron`, and `--yes` picks them only with `--category electron`.
-- With `--yes` only safe items are picked, and `--yes --risky` adds the moderate and risky ones except the
-  irreversible items. `.venv` and `venv` folders are never picked by `--yes`, not even with
+- With `--yes` only safe items are picked unless you pass `--risky` or name a `--category`. `--yes --risky` adds
+  the moderate and risky ones except the irreversible items, and `--yes --category <name>` picks every item of
+  that category, irreversible ones too. `.venv` and `venv` folders are never picked by `--yes`, not even with
   `--category project-artifacts`.
 
 Irreversible items cannot be undone. In the interactive list they are not marked and none of them

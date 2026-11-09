@@ -200,11 +200,14 @@ describe('LaunchAgentsScanner.clean', () => {
   it('never builds a launchctl command from a non-numeric SUDO_UID', async () => {
     vi.mocked(run).mockClear();
     vi.stubEnv('SUDO_UID', '1; touch /tmp/pwned');
-    await agent('gone.plist', JSON.stringify({ Program: '/gone/a' }));
-    const [item] = await ours();
-    if (!item) throw new Error('expected an orphan');
-    await new LaunchAgentsScanner().clean([item], false);
-    vi.unstubAllEnvs();
+    try {
+      await agent('gone.plist', JSON.stringify({ Program: '/gone/a' }));
+      const [item] = await ours();
+      if (!item) throw new Error('expected an orphan');
+      await new LaunchAgentsScanner().clean([item], false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
     expect(bootouts()).toEqual([]);
   });
 

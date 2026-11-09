@@ -91,13 +91,15 @@ function hardLinks(real: string): number {
 }
 
 // From Node 22 cpSync copies a folder in native code, past the guarded calls, and writes through every symlink
-// and hard-linked file it meets in the destination.
+// and hard-linked file it meets in the destination. A folder it cannot read may hold one, so it is refused.
 function linkInside(dir: string): string | undefined {
   let names: string[];
   try {
     names = fs.readdirSync(dir);
-  } catch {
-    return undefined;
+  } catch (error) {
+    const { code } = error as NodeJS.ErrnoException;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return undefined;
+    return dir;
   }
   for (const name of names) {
     const entry = path.join(dir, name);

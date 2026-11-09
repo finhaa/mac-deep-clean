@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
-import { clearDir, getSize, pathExists } from '../utils/fs.js';
+import { canWriteDir, clearDir, getSize, pathExists } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -21,7 +21,7 @@ export class DiagnosticReportsScanner extends BaseScanner {
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
     for (const t of this.targets) {
-      if (!(await pathExists(t.path))) continue;
+      if (!(await pathExists(t.path)) || !(await canWriteDir(t.path))) continue;
       const size = await getSize(t.path);
       if (size === 0) continue;
       results.push({

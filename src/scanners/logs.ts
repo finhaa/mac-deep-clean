@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
-import { clearDir, isDirectory, sizeExcluding } from '../utils/fs.js';
+import { canWriteDir, clearDir, isDirectory, sizeExcluding } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -21,7 +21,7 @@ export class LogsScanner extends BaseScanner {
   async scan(): Promise<ScanResult[]> {
     const results: ScanResult[] = [];
     for (const t of this.targets) {
-      if (!(await isDirectory(t.path))) continue;
+      if (!(await isDirectory(t.path)) || !(await canWriteDir(t.path))) continue;
       const size = await sizeExcluding(t.path, OWNED_BY_OTHER_SCANNERS);
       if (size < 10 * 1024 * 1024) continue;
       results.push({

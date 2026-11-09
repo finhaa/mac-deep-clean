@@ -5,6 +5,7 @@ const sized = vi.hoisted(() => ({ bytes: 0 }));
 vi.mock('../utils/fs.js', () => ({
   pathExists: vi.fn(async () => true),
   isDirectory: vi.fn(async () => true),
+  canWriteDir: vi.fn(async () => true),
   sizeExcluding: vi.fn(async () => sized.bytes),
   getSize: vi.fn(async () => 5),
   clearDir: vi.fn(async () => ({ freed: 7, errors: ['denied: /x/Logs/a'] })),

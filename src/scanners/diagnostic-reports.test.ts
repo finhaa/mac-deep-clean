@@ -8,6 +8,7 @@ const fsMock = vi.hoisted(() => ({
 vi.mock('../utils/fs.js', () => ({
   pathExists: vi.fn(async () => true),
   getSize: vi.fn(async () => fsMock.size),
+  canWriteDir: vi.fn(async () => true),
   clearDir: vi.fn(async () => fsMock.cleared),
 }));
 

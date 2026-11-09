@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CleanResult, ScanResult } from '../types.js';
 import { run, shellQuote } from '../utils/exec.js';
-import { isDirectory, listDir, safeRemove } from '../utils/fs.js';
+import { canWriteDir, isDirectory, listDir, safeRemove } from '../utils/fs.js';
 import { HOME } from '../utils/paths.js';
 import { BaseScanner } from './base-scanner.js';
 
@@ -21,7 +21,7 @@ export class LaunchAgentsScanner extends BaseScanner {
     ];
 
     for (const root of roots) {
-      if (!(await isDirectory(root))) continue;
+      if (!(await isDirectory(root)) || !(await canWriteDir(root))) continue;
       for (const name of await listDir(root)) {
         if (!name.endsWith('.plist')) continue;
         const plistPath = path.join(root, name);

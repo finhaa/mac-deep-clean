@@ -7,6 +7,7 @@ vi.mock('../utils/fs.js', () => ({
   getSize: vi.fn(async () => 5 * 1024 ** 3),
   listDir: vi.fn(async () => []),
   isDirectory: vi.fn(async () => true),
+  canWriteDir: vi.fn(async () => true),
 }));
 
 import { BrowserCacheScanner } from './browser-cache.js';

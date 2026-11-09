@@ -203,6 +203,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sentence. Test runs also refuse a `cp` into a folder they cannot read, or one holding such a folder,
   which they used to let through unchecked, run with colour off whatever `FORCE_COLOR` says, and
   undo every environment stub even when the code under test throws.
+- Unavailable iOS simulators are offered only when `xcrun --find simctl` succeeds. With only the
+  Command Line Tools installed, `xcrun` exists but has no `simctl`, so the item was offered and the
+  clean freed 0 B. The scan first asks `xcode-select -p` for a developer folder and, without one,
+  never calls `xcrun`, whose stub could raise the tools install dialog.
+- A run without sudo no longer offers what it cannot delete: an orphaned LaunchAgent in
+  `/Library/LaunchAgents` or `/Library/LaunchDaemons`, the system logs, the system Diagnostic
+  Reports and the system music libraries are listed only when the process can write the folder the
+  delete happens in. A run under sudo still lists them.
 
 ### Safety
 

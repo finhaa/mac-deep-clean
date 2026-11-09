@@ -144,15 +144,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   append flag), `createWriteStream`, `mkdir`, `mkdtemp`, `mkdtempDisposable`, `symlink`,
   `link` (both paths), `utimes`, `lutimes`, `chmod`, `lchmod`, `chown` and `lchown`,
   in promise, callback and sync form,
-  through named imports, `file:` URLs, Buffers and any other byte array, a symlinked
-  parent, a missing folder under a symlink, a symlink target that climbs out with `..`,
-  a trailing slash and a symlink the call follows. A call that changes a file also
+  through named imports, `file:` URLs and plain objects Node takes as one, Buffers and
+  any other byte array, a symlinked parent, a missing folder under a symlink, a symlink
+  target that climbs out with `..`, a trailing slash and a symlink the call follows. A
+  `..` after a missing folder is refused when more of the path follows it. A call that changes a file also
   refuses one in the temp dir with more than one hard link, since another link may lie
-  outside it. The temp dir itself is refused
+  outside it, and `cp` also refuses a destination folder that holds a symlink or a file
+  with more than one hard link at any depth, since from Node 22 it copies a folder past
+  the guarded calls. The temp dir itself is refused
   when it is `/` or holds the home folder. Not guarded: every call on a file descriptor
   or FileHandle (`fchmod`, `fchown`, `futimes`, `ftruncate`, `write`, `writev`; one opened
   for writing went through the guarded `open`, but `fchmod`, `fchown` and `futimes` also
-  work on one opened for reading) and child processes (`rm`, `find -delete`).
+  work on one opened for reading) and child processes (`rm`, `find -delete`). The checks
+  run before the call, so a symlink or hard link made between the check and the call is
+  not caught.
 - The test that no two scanners offer the same path now runs in a temp home folder,
   fails when a scanner that should find something offers nothing, and pins which
   scanners may flag an item irreversible. `clean --help` says `--deep` with `--yes`

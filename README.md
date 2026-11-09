@@ -96,8 +96,9 @@ node dist/index.js clean --category apfs-snapshots
 ```
 
 Only the root-owned `/Library` entries need the whole tool to run as root:
-`system-cache` always, and the system parts of `logs`, `diagnostic-reports`,
-`launch-agents` and `music-creation`. Everything else never does. Without sudo, the system parts
+the `/Library/Caches` entries of `system-cache` that you do not own, and the system parts of
+`logs`, `diagnostic-reports`, `launch-agents` and `music-creation`. Everything else never does.
+Without sudo, `system-cache` lists only the `/Library/Caches` entries you own, and the system parts
 of `logs`, `diagnostic-reports`, `launch-agents` and `music-creation` are not listed at all, since
 the run could not delete them. For example:
 

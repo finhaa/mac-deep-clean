@@ -41,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is re-classified as "other / likely SIP-protected" to avoid nonsensical
   advice.
 - CI workflow on `ubuntu-latest` running lint, typecheck, test, and build
-  on push and pull request.
+  on push and pull request, plus a `macos-latest` test job so the tests that
+  only run on macOS (case-folding volume, `/Volumes` symlinks) run in CI too.
 
 ### Fixed
 

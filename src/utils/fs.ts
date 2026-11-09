@@ -29,6 +29,28 @@ export async function canWriteDir(dir: string): Promise<boolean> {
   }
 }
 
+// Whether this process could remove the whole tree: every folder in it must be writable and searchable,
+// and a sticky folder inside also needs every entry to be this user's. Symlinks are not followed.
+export async function canRemoveTree(root: string): Promise<boolean> {
+  const uid = process.getuid?.();
+  const pending = [root];
+  try {
+    while (pending.length > 0) {
+      const dir = pending.pop() as string;
+      if (!(await canWriteDir(dir))) return false;
+      const sticky = ((await fs.lstat(dir)).mode & 0o1000) !== 0;
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const child = path.join(dir, entry.name);
+        if (sticky && (await fs.lstat(child)).uid !== uid) return false;
+        if (entry.isDirectory()) pending.push(child);
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function ownerUid(p: string): Promise<number | undefined> {
   try {
     return (await fs.lstat(p)).uid;

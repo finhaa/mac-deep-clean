@@ -6,6 +6,7 @@ const fsState = vi.hoisted(() => ({
   dirs: new Set<string>(),
   sizes: new Map<string, number>(),
   owners: new Map<string, number>(),
+  stuck: new Set<string>(),
 }));
 
 vi.mock('../utils/fs.js', () => ({
@@ -13,6 +14,7 @@ vi.mock('../utils/fs.js', () => ({
   listDir: async () => fsState.entries,
   getSize: async (p: string) => fsState.sizes.get(p) ?? 0,
   ownerUid: async (p: string) => fsState.owners.get(p),
+  canRemoveTree: async (p: string) => !fsState.stuck.has(p),
 }));
 
 import { SystemCacheScanner } from './system-cache.js';
@@ -35,6 +37,7 @@ beforeEach(() => {
   fsState.dirs.clear();
   fsState.sizes.clear();
   fsState.owners.clear();
+  fsState.stuck.clear();
   process.getuid = () => ME;
 });
 
@@ -88,5 +91,21 @@ describe('SystemCacheScanner', () => {
     entry('com.other', 70 * MB, true, 502);
     const results = await new SystemCacheScanner().scan();
     expect(results.map((r) => r.label)).toEqual(['com.root', 'com.mine', 'com.other']);
+  });
+
+  it('does not offer a run without sudo an entry it owns that holds what it cannot remove', async () => {
+    entry('com.mine', 80 * MB);
+    entry('com.mixed', 90 * MB);
+    fsState.stuck.add('/Library/Caches/com.mixed');
+    const results = await new SystemCacheScanner().scan();
+    expect(results.map((r) => r.label)).toEqual(['com.mine']);
+  });
+
+  it('offers a run under sudo an entry whatever it holds', async () => {
+    process.getuid = () => 0;
+    entry('com.mixed', 90 * MB, true, 0);
+    fsState.stuck.add('/Library/Caches/com.mixed');
+    const results = await new SystemCacheScanner().scan();
+    expect(results.map((r) => r.label)).toEqual(['com.mixed']);
   });
 });

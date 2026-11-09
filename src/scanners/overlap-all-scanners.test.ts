@@ -49,6 +49,7 @@ vi.mock('../utils/fs.js', async (importOriginal) => ({
   isDirectory: vi.fn(async () => true),
   canWriteDir: vi.fn(async () => true),
   ownerUid: vi.fn(async () => process.getuid?.()),
+  canRemoveTree: vi.fn(async () => true),
   listDir: vi.fn(async () => NAMES),
   getSize: vi.fn(async () => 5 * 1024 ** 3),
   sizeExcluding: vi.fn(async () => 5 * 1024 ** 3),

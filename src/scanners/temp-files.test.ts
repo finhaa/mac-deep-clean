@@ -167,11 +167,14 @@ describe('TempFilesScanner', () => {
     await fs.utimes(oldFile, threeDaysAgo, threeDaysAgo);
     vi.stubEnv('USER', 'someone"; touch /tmp/mdc-pwned; "');
 
-    const { freed, errors } = await new TempFilesScanner().clean(
-      [{ path: dir, size: 1000, label: 'x', category: 'temp-files', risk: 'moderate' }],
-      false,
-    );
-    vi.unstubAllEnvs();
+    const { freed, errors } = await new TempFilesScanner()
+      .clean(
+        [{ path: dir, size: 1000, label: 'x', category: 'temp-files', risk: 'moderate' }],
+        false,
+      )
+      .finally(() => {
+        vi.unstubAllEnvs();
+      });
 
     expect(errors).toEqual([]);
     expect(freed).toBeGreaterThan(0);

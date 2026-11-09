@@ -419,7 +419,27 @@ describe('vitest.setup.ts delete guard', () => {
       expect((await fsp.readFile(path.join(dir, 'twin'))).toString()).toBe('old');
     });
 
-    it('still copies a folder into a new folder or over one that holds only plain files', async () => {
+    it.skipIf(process.getuid?.() === 0)(
+      'refuses a recursive cp into a folder that holds a folder it cannot read',
+      async () => {
+        const dir = await tempDir();
+        const src = path.join(dir, 'src');
+        await fsp.mkdir(path.join(src, 'sub'), { recursive: true });
+        await fsp.writeFile(path.join(src, 'sub', 'a'), 'new');
+        const locked = path.join(dir, 'locked');
+        await fsp.mkdir(path.join(locked, 'sub'), { recursive: true });
+        await fsp.symlink('/usr/bin/mdc-never-here', path.join(locked, 'sub', 'a'));
+        await fsp.chmod(path.join(locked, 'sub'), 0o300);
+        try {
+          await expect(fsp.cp(src, locked, { recursive: true })).rejects.toThrow(/test guard/);
+          expect(() => fs.cpSync(src, locked, { recursive: true })).toThrow(/test guard/);
+        } finally {
+          await fsp.chmod(path.join(locked, 'sub'), 0o755);
+        }
+      },
+    );
+
+    it('still copies a folder into a new folder or over one that holds only plain files, and a file over a file', async () => {
       const dir = await tempDir();
       const src = path.join(dir, 'src');
       await fsp.mkdir(path.join(src, 'sub'), { recursive: true });
@@ -432,6 +452,10 @@ describe('vitest.setup.ts delete guard', () => {
       fs.cpSync(src, plain, { recursive: true });
       expect((await fsp.readFile(path.join(dir, 'fresh', 'sub', 'a'))).toString()).toBe('new');
       expect((await fsp.readFile(path.join(plain, 'sub', 'a'))).toString()).toBe('new');
+      const single = path.join(dir, 'single');
+      await fsp.writeFile(single, 'old');
+      await fsp.cp(path.join(src, 'sub', 'a'), single);
+      expect((await fsp.readFile(single)).toString()).toBe('new');
     });
 
     it('refuses a symlink whose target climbs out through another symlink', async () => {

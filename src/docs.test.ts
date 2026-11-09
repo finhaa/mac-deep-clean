@@ -159,7 +159,13 @@ describe('README', () => {
 describe('README --yes', () => {
   it('says what --yes does with snapshots and other irreversible categories', () => {
     const readme = read('README.md');
-    expect(readme).toContain('With `--yes` only safe items are picked');
+    const flat = readme.replace(/\s+/g, ' ');
+    expect(flat).toContain(
+      'With `--yes` only safe items are picked unless you pass `--risky` or name a `--category`.',
+    );
+    expect(flat).toContain('`--yes --category <name>` picks every item of that category');
+    expect(flat).toContain('selects only safe items unless you add --risky or --category');
+    expect(flat).not.toMatch(/only safe items (are picked,|\(add --risky)/);
     expect(readme).not.toContain('nothing is picked for you');
   });
 });
